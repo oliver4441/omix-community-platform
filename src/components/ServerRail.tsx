@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Store, getUserColor } from '../utils/store';
+import { Store } from '../utils/store';
 import type { Server } from '../types';
 
 export function ServerRail({ isMobile, currentView }: { isMobile: boolean; currentView: string }) {

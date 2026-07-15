@@ -1,23 +1,4 @@
-import {
-  collection,
-  doc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  getDoc,
-  setDoc,
-  Timestamp,
-  serverTimestamp,
-  FieldValue,
-  DocumentData,
-  QuerySnapshot,
-  DocumentSnapshot,
-} from 'firebase/firestore';
-import { db } from './firebase';
+import { db, firebase } from './firebase';
 import type { Message, Channel, Server, User, UnreadCounts, TypingUser } from '../types';
 
 const SESSION_ID = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
@@ -38,11 +19,11 @@ function getUserColor(name: string): string {
 
 function convertTimestamp(ts: unknown): Date {
   if (!ts) return new Date();
-  if (ts instanceof Timestamp) return ts.toDate();
+  if (ts instanceof firebase.firestore.Timestamp) return ts.toDate();
   if (typeof ts === 'object' && ts !== null && 'toDate' in ts) {
     return (ts as { toDate: () => Date }).toDate();
   }
-  return new Date();
+  return new Date(ts as string | number);
 }
 
 type Listener = () => void;
@@ -133,40 +114,41 @@ export const Store = {
 
   // === ADMIN ===
   async verifyAdminPassword(password: string): Promise<boolean> {
-    const ref = doc(db, 'config', 'settings');
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      await setDoc(ref, { adminPassword: password });
+    const ref = db.collection('config').doc('settings');
+    const snap = await ref.get();
+    if (!snap.exists) {
+      await ref.set({ adminPassword: password });
       return true;
     }
-    return snap.data().adminPassword === password;
+    return snap.data()?.adminPassword === password;
   },
 
   // === SERVERS ===
   subscribeServers(cb: (type: string, data: Server[]) => void) {
-    const q = query(collection(db, 'servers'), orderBy('name'));
-    const unsub = onSnapshot(q, (snap: QuerySnapshot<DocumentData>) => {
-      state.servers = snap.docs.map(d => ({ id: d.id, ...d.data() } as Server));
-      notify('servers', state.servers);
-      cb('servers', state.servers);
-    });
+    const unsub = db.collection('servers')
+      .orderBy('name')
+      .onSnapshot((snap: firebase.firestore.QuerySnapshot) => {
+        state.servers = snap.docs.map(d => ({ id: d.id, ...d.data() } as Server));
+        notify('servers', state.servers);
+        cb('servers', state.servers);
+      });
     state.listeners.push(unsub);
     return unsub;
   },
 
   async createServer(name: string): Promise<string> {
-    const ref = await addDoc(collection(db, 'servers'), {
+    const ref = await db.collection('servers').add({
       name: name.trim(),
       icon: '',
       ownerId: SESSION_ID,
-      createdAt: serverTimestamp(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     return ref.id;
   },
 
   async deleteServer(serverId: string): Promise<void> {
     if (!state.isAdmin) throw new Error('Admin only');
-    await deleteDoc(doc(db, 'servers', serverId));
+    await db.collection('servers').doc(serverId).delete();
   },
 
   // === CHANNELS ===
@@ -174,28 +156,26 @@ export const Store = {
     this.cleanupTyping();
     this.cleanupPresence();
     this.cleanupPins();
-    const q = query(
-      collection(db, 'channels'),
-      where('serverId', '==', serverId),
-      orderBy('name')
-    );
-    const unsub = onSnapshot(q, (snap: QuerySnapshot<DocumentData>) => {
-      state.channels = snap.docs.map(d => ({ id: d.id, ...d.data() } as Channel));
-      notify('channels', state.channels);
-      cb('channels', state.channels);
-    });
+    const unsub = db.collection('channels')
+      .where('serverId', '==', serverId)
+      .orderBy('name')
+      .onSnapshot((snap: firebase.firestore.QuerySnapshot) => {
+        state.channels = snap.docs.map(d => ({ id: d.id, ...d.data() } as Channel));
+        notify('channels', state.channels);
+        cb('channels', state.channels);
+      });
     state.listeners.push(unsub);
     return unsub;
   },
 
   async createChannel(serverId: string, name: string, category = 'Text Channels'): Promise<string> {
-    const ref = await addDoc(collection(db, 'channels'), {
+    const ref = await db.collection('channels').add({
       serverId,
       name: name.toLowerCase().replace(/\s+/g, '-'),
       category,
       type: 'text',
       position: state.channels.length,
-      createdAt: serverTimestamp(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     state.currentChannelId = ref.id;
     localStorage.setItem('omix_channel', ref.id);
@@ -204,33 +184,31 @@ export const Store = {
 
   async deleteChannel(channelId: string): Promise<void> {
     if (!state.isAdmin) throw new Error('Admin only');
-    await deleteDoc(doc(db, 'channels', channelId));
+    await db.collection('channels').doc(channelId).delete();
   },
 
   // === MESSAGES ===
   subscribeMessages(channelId: string, cb: (type: string, data: Message[]) => void) {
     this.cleanupTyping();
-    const q = query(
-      collection(db, 'messages'),
-      where('channelId', '==', channelId),
-      orderBy('timestamp', 'asc')
-    );
-    const unsub = onSnapshot(q, (snap: QuerySnapshot<DocumentData>) => {
-      state.messages = snap.docs
-        .map(d => {
-          const data = d.data();
-          return {
-            id: d.id,
-            ...data,
-            timestamp: convertTimestamp(data.timestamp),
-            editedAt: data.editedAt ? convertTimestamp(data.editedAt) : undefined,
-            pinnedAt: data.pinnedAt ? convertTimestamp(data.pinnedAt) : undefined,
-          } as Message;
-        })
-        .filter(m => !m.pinned);
-      notify('messages', state.messages);
-      cb('messages', state.messages);
-    });
+    const unsub = db.collection('messages')
+      .where('channelId', '==', channelId)
+      .orderBy('timestamp', 'asc')
+      .onSnapshot((snap: firebase.firestore.QuerySnapshot) => {
+        state.messages = snap.docs
+          .map(d => {
+            const data = d.data();
+            return {
+              id: d.id,
+              ...data,
+              timestamp: convertTimestamp(data.timestamp),
+              editedAt: data.editedAt ? convertTimestamp(data.editedAt) : undefined,
+              pinnedAt: data.pinnedAt ? convertTimestamp(data.pinnedAt) : undefined,
+            } as Message;
+          })
+          .filter(m => !m.pinned);
+        notify('messages', state.messages);
+        cb('messages', state.messages);
+      });
     state.listeners.push(unsub);
     return unsub;
   },
@@ -256,57 +234,55 @@ export const Store = {
       sessionId: SESSION_ID,
       text: text.trim(),
       color: getUserColor(displayName),
-      timestamp: serverTimestamp(),
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
       reactions: {},
       ...(opts.fileUrl && { fileUrl: opts.fileUrl, fileType: opts.fileType || 'image', fileName: opts.fileName, fileSize: opts.fileSize }),
       ...(opts.replyTo && { replyTo: opts.replyTo }),
       ...(opts.mentions && { mentions: opts.mentions }),
     };
-    await addDoc(collection(db, 'messages'), msg);
+    await db.collection('messages').add(msg);
   },
 
   async editMessage(messageId: string, newText: string): Promise<void> {
-    await updateDoc(doc(db, 'messages', messageId), {
+    await db.collection('messages').doc(messageId).update({
       text: newText.trim(),
       edited: true,
-      editedAt: serverTimestamp(),
+      editedAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
   },
 
   async deleteMessage(messageId: string): Promise<void> {
-    await deleteDoc(doc(db, 'messages', messageId));
+    await db.collection('messages').doc(messageId).delete();
   },
 
   // === PINS ===
   async togglePin(messageId: string): Promise<void> {
     if (!state.isAdmin) throw new Error('Admin only');
-    const ref = doc(db, 'messages', messageId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return;
-    const data = snap.data();
+    const ref = db.collection('messages').doc(messageId);
+    const snap = await ref.get();
+    if (!snap.exists) return;
+    const data = snap.data() as Message;
     if (data.pinned) {
-      await updateDoc(ref, { pinned: false });
+      await ref.update({ pinned: false });
     } else {
-      await updateDoc(ref, { pinned: true, pinnedAt: serverTimestamp() });
+      await ref.update({ pinned: true, pinnedAt: firebase.firestore.FieldValue.serverTimestamp() });
     }
   },
 
   subscribePins(channelId: string, cb: (pins: Message[]) => void) {
-    const q = query(
-      collection(db, 'messages'),
-      where('channelId', '==', channelId),
-      where('pinned', '==', true)
-    );
-    const unsub = onSnapshot(q, (snap: QuerySnapshot<DocumentData>) => {
-      const pins = snap.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-        timestamp: convertTimestamp(d.data().timestamp),
-      } as Message));
-      state.pinnedMessages = pins;
-      notify('pins', pins);
-      cb(pins);
-    });
+    const unsub = db.collection('messages')
+      .where('channelId', '==', channelId)
+      .where('pinned', '==', true)
+      .onSnapshot((snap: firebase.firestore.QuerySnapshot) => {
+        const pins = snap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          timestamp: convertTimestamp(d.data().timestamp),
+        } as Message));
+        state.pinnedMessages = pins;
+        notify('pins', pins);
+        cb(pins);
+      });
     state.pinListeners.push(unsub);
     return unsub;
   },
@@ -318,10 +294,10 @@ export const Store = {
 
   // === REACTIONS ===
   async toggleReaction(messageId: string, emoji: string, displayName: string): Promise<void> {
-    const ref = doc(db, 'messages', messageId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return;
-    const data = snap.data();
+    const ref = db.collection('messages').doc(messageId);
+    const snap = await ref.get();
+    if (!snap.exists) return;
+    const data = snap.data() as Message;
     const reactions = data.reactions || {};
     const users = reactions[emoji] || [];
     const idx = users.indexOf(displayName);
@@ -333,39 +309,38 @@ export const Store = {
       users.push(displayName);
       reactions[emoji] = users;
     }
-    await updateDoc(ref, { reactions });
+    await ref.update({ reactions });
   },
 
   // === TYPING ===
   startTyping(channelId: string, displayName: string): void {
     if (!channelId || !displayName) return;
-    const ref = doc(db, 'typing', `${channelId}_${SESSION_ID}`);
-    await setDoc(ref, {
+    const ref = db.collection('typing').doc(`${channelId}_${SESSION_ID}`);
+    await ref.set({
       channelId,
       name: displayName,
       sessionId: SESSION_ID,
-      timestamp: serverTimestamp(),
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
     });
-    setTimeout(() => {
-      deleteDoc(ref).catch(() => {});
-    }, TYPING_TIMEOUT);
+    setTimeout(() => ref.delete().catch(() => {}), TYPING_TIMEOUT);
   },
 
   stopTyping(channelId: string): void {
     if (!channelId) return;
-    deleteDoc(doc(db, 'typing', `${channelId}_${SESSION_ID}`)).catch(() => {});
+    db.collection('typing').doc(`${channelId}_${SESSION_ID}`).delete().catch(() => {});
   },
 
   subscribeTyping(channelId: string, cb: (users: TypingUser[]) => void) {
     if (!channelId) return () => {};
-    const q = query(collection(db, 'typing'), where('channelId', '==', channelId));
-    const unsub = onSnapshot(q, (snap: QuerySnapshot<DocumentData>) => {
-      const users = snap.docs
-        .map(d => d.data() as TypingUser)
-        .filter(u => u.sessionId !== SESSION_ID && u.name);
-      state.typingUsers = users;
-      cb(users);
-    });
+    const unsub = db.collection('typing')
+      .where('channelId', '==', channelId)
+      .onSnapshot((snap: firebase.firestore.QuerySnapshot) => {
+        const users = snap.docs
+          .map(d => d.data() as TypingUser)
+          .filter(u => u.sessionId !== SESSION_ID && u.name);
+        state.typingUsers = users;
+        cb(users);
+      });
     state.typingListeners.push(unsub);
     return unsub;
   },
@@ -377,35 +352,36 @@ export const Store = {
 
   // === PRESENCE ===
   async setPresence(displayName: string): Promise<void> {
-    const ref = doc(db, 'presence', SESSION_ID);
-    const heartbeat = () => updateDoc(ref, {
+    const ref = db.collection('presence').doc(SESSION_ID);
+    const heartbeat = () => ref.update({
       online: true,
-      lastSeen: serverTimestamp(),
+      lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
     });
-    await setDoc(ref, {
+    await ref.set({
       name: displayName,
       online: true,
       color: getUserColor(displayName),
-      lastSeen: serverTimestamp(),
+      lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
     });
     setInterval(heartbeat, 30000);
-    window.addEventListener('beforeunload', () => updateDoc(ref, { online: false }));
+    window.addEventListener('beforeunload', () => ref.update({ online: false }));
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) updateDoc(ref, { online: false });
-      else updateDoc(ref, { online: true, lastSeen: serverTimestamp() });
+      if (document.hidden) ref.update({ online: false });
+      else ref.update({ online: true, lastSeen: firebase.firestore.FieldValue.serverTimestamp() });
     });
   },
 
   subscribePresence(cb: (users: User[]) => void) {
-    const q = query(collection(db, 'presence'), where('online', '==', true));
-    const unsub = onSnapshot(q, (snap: QuerySnapshot<DocumentData>) => {
-      const users = snap.docs.map(d => {
-        const data = d.data();
-        return { name: data.name, id: d.id, color: data.color } as User;
+    const unsub = db.collection('presence')
+      .where('online', '==', true)
+      .onSnapshot((snap: firebase.firestore.QuerySnapshot) => {
+        const users = snap.docs.map(d => {
+          const data = d.data();
+          return { name: data.name, id: d.id, color: data.color } as User;
+        });
+        state.onlineUsers = users;
+        cb(users);
       });
-      state.onlineUsers = users;
-      cb(users);
-    });
     state.presenceListeners.push(unsub);
     return unsub;
   },
@@ -413,6 +389,20 @@ export const Store = {
   cleanupPresence() {
     state.presenceListeners.forEach(u => u());
     state.presenceListeners = [];
+  },
+
+  // === FILE UPLOAD ===
+  async uploadFile(file: File, channelId: string, displayName: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (file.size > 5 * 1024 * 1024) { reject('File too large'); return; }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.sendMessage(channelId, '', displayName, { fileUrl: e.target?.result as string, fileType: file.type });
+        resolve();
+      };
+      reader.onerror = () => reject('Failed to read file');
+      reader.readAsDataURL(file);
+    });
   },
 
   // === UNREAD ===
@@ -428,9 +418,7 @@ export const Store = {
   },
 
   saveUnread() {
-    try {
-      localStorage.setItem('omix_unread', JSON.stringify(state.unreadCounts));
-    } catch {}
+    try { localStorage.setItem('omix_unread', JSON.stringify(state.unreadCounts)); } catch {}
   },
 
   // === CLEANUP ===
