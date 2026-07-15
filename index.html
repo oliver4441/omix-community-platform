@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Omix Community Platform</title>
+    <meta name="description" content="Discord-style community chat PWA">
+
+    <!-- PWA Setup -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#5865f2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Omix Chat">
+    <link rel="apple-touch-icon" href="/logo-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/logo-512.png">
+    <link rel="icon" type="image/jpeg" href="/logo.jpg">
+
+    <!-- Lucide Icons -->
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- PWA Install Modal -->
+    <div id="install-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity 0.3s ease">
+        <div id="install-modal" style="background:#2b2d31;border-radius:20px;padding:32px 28px;max-width:380px;width:100%;box-shadow:0 25px 60px rgba(0,0,0,0.5);border:1px solid #3f4147;transform:translateY(30px);transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);text-align:center">
+            <img src="/logo.jpg" alt="Omix Community" style="width:80px;height:80px;border-radius:20px;margin:0 auto 16px;box-shadow:0 8px 32px rgba(88,101,242,0.3);display:block;object-fit:cover">
+
+            <h2 style="font-size:20px;font-weight:700;color:#f2f3f5;margin:0 0 4px">Install Omix Community</h2>
+            <p style="font-size:13px;color:#949ba4;margin:0 0 20px;line-height:1.4">Get the full experience — faster, offline-ready, right on your home screen</p>
+
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px;text-align:left">
+                <div style="display:flex;align-items:center;gap:10px;background:#232428;border-radius:10px;padding:10px 12px">
+                    <span style="font-size:16px">⚡</span>
+                    <div><div style="font-size:13px;font-weight:600;color:#f2f3f5">Lightning fast</div><div style="font-size:11px;color:#949ba4">Loads instantly, no browser tabs</div></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;background:#232428;border-radius:10px;padding:10px 12px">
+                    <span style="font-size:16px">📡</span>
+                    <div><div style="font-size:13px;font-weight:600;color:#f2f3f5">Works offline</div><div style="font-size:11px;color:#949ba4">Read cached messages anywhere</div></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;background:#232428;border-radius:10px;padding:10px 12px">
+                    <span style="font-size:16px">🔔</span>
+                    <div><div style="font-size:13px;font-weight:600;color:#f2f3f5">Push notifications</div><div style="font-size:11px;color:#949ba4">Never miss a message</div></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;background:#232428;border-radius:10px;padding:10px 12px">
+                    <span style="font-size:16px">📱</span>
+                    <div><div style="font-size:13px;font-weight:600;color:#f2f3f5">Full-screen mode</div><div style="font-size:11px;color:#949ba4">Like a native app, no browser chrome</div></div>
+                </div>
+            </div>
+
+            <button id="install-btn" onclick="installPWA()" style="width:100%;background:#5865f2;color:white;border:none;padding:14px;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 12px rgba(88,101,242,0.3)" onmouseover="this.style.background='#4752c4'" onmouseout="this.style.background='#5865f2'">
+                <span id="install-btn-text">Install Now</span>
+            </button>
+            <button id="install-dismiss" onclick="dismissInstall()" style="width:100%;background:transparent;color:#949ba4;border:none;padding:10px;border-radius:12px;font-size:13px;cursor:pointer;margin-top:6px;transition:color 0.2s" onmouseover="this.style.color='#f2f3f5'" onmouseout="this.style.color='#949ba4'">
+                Maybe later
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                    console.error('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+
+        // PWA install logic
+        var deferredPrompt = null;
+        var installDismissed = localStorage.getItem('omix_install_dismissed');
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            deferredPrompt = e;
+            setTimeout(function() {
+                if (!isStandalone && !installDismissed && deferredPrompt) {
+                    showInstallModal();
+                }
+            }, 4000);
+        });
+
+        window.addEventListener('appinstalled', function() {
+            hideInstallModal();
+            deferredPrompt = null;
+            localStorage.setItem('omix_install_dismissed', 'true');
+        });
+
+        window.matchMedia('(display-mode: standalone)').addEventListener('change', function(e) {
+            if (e.matches) {
+                hideInstallModal();
+                localStorage.setItem('omix_install_dismissed', 'true');
+            }
+        });
+
+        function showInstallModal() {
+            var overlay = document.getElementById('install-overlay');
+            var modal = document.getElementById('install-modal');
+            overlay.style.display = 'flex';
+            requestAnimationFrame(function() {
+                overlay.style.opacity = '1';
+                modal.style.transform = 'translateY(0)';
+            });
+        }
+
+        function hideInstallModal() {
+            var overlay = document.getElementById('install-overlay');
+            var modal = document.getElementById('install-modal');
+            overlay.style.opacity = '0';
+            modal.style.transform = 'translateY(30px)';
+            setTimeout(function() { overlay.style.display = 'none'; }, 300);
+        }
+
+        function dismissInstall() {
+            localStorage.setItem('omix_install_dismissed', 'true');
+            installDismissed = 'true';
+            hideInstallModal();
+        }
+
+        function installPWA() {
+            if (!deferredPrompt) {
+                var btn = document.getElementById('install-btn-text');
+                btn.textContent = 'Tap Share → Add to Home Screen';
+                setTimeout(function() { btn.textContent = 'Install Now'; }, 3000);
+                return;
+            }
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(function(result) {
+                deferredPrompt = null;
+                if (result.outcome === 'accepted') {
+                    localStorage.setItem('omix_install_dismissed', 'true');
+                }
+                hideInstallModal();
+            });
+        }
+
+        setTimeout(function() {
+            if (!isStandalone && !installDismissed && !deferredPrompt) {
+                var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                if (isIOS) {
+                    showInstallModal();
+                    document.getElementById('install-btn-text').textContent = 'Share → Add to Home Screen';
+                }
+            }
+        }, 8000);
+    </script>
+
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

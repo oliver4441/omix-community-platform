@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer theme {
+  :root {
+    --bg-rail: #1e1f22;
+    --bg-sidebar: #2b2d31;
+    --bg-chat: #313338;
+    --bg-hover: #3f4147;
+    --bg-message-hover: #2e3035;
+    --accent: #5865f2;
+    --accent-hover: #4752c4;
+    --text-primary: #f2f3f5;
+    --text-muted: #949ba4;
+    --online: #23a559;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--bg-chat)] text-[var(--text-primary)] antialiased overflow-hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * {
+    @apply border-gray-800;
+  }
+}
+
+@layer components {
+  .btn-accent {
+    @apply bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-medium rounded transition-colors;
+  }
+
+  .scroll-custom::-webkit-scrollbar {
+    width: 8px;
+  }
+  .scroll-custom::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-custom::-webkit-scrollbar-thumb {
+    background-color: #1a1b1e;
+    border-radius: 4px;
+  }
+}
+
+@layer utilities {
+  .animate-fade-up {
+    animation: fadeSlideUp 0.4s ease forwards;
+  }
+  .animate-shimmer {
+    background: linear-gradient(90deg, #2b2d31 25%, #3f4147 50%, #2b2d31 75%);
+    background-size: 200px 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradientShift 8s ease infinite;
+  }
+  .skeleton {
+    border-radius: 8px;
+    background: linear-gradient(90deg, #2b2d31 25%, #3f4147 50%, #2b2d31 75%);
+    background-size: 200px 100%;
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  @apply outline-none ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg-chat)];
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
