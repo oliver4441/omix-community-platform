@@ -7,6 +7,9 @@ export function PWABanner() {
   const [offline, setOffline] = useState(!navigator.onLine);
   const deferredPrompt = useRef<Event | null>(null);
   const [updateSW, setUpdateSW] = useState<ServiceWorker | null>(null);
+  const [countdown, setCountdown] = useState(0);
+  const autoReloadTimer = useRef<ReturnType<typeof setTimeout>>();
+  const countdownInterval = useRef<ReturnType<typeof setInterval>>();
 
   // --- ONLINE/OFFLINE ---
   useEffect(() => {
@@ -99,8 +102,8 @@ export function PWABanner() {
     if (!('serviceWorker' in navigator)) return;
 
     let refreshing = false;
-    const intervalRef = { current: 0 as unknown as ReturnType<typeof setInterval> };
-    const visibleHandler = { current: () => {} };
+    const updateInterval = { current: 0 as unknown as ReturnType<typeof setInterval> };
+    const visibilityHandler = { current: () => {} };
 
     // Listen for controller change (after skipWaiting) — reload
     const onControllerChange = () => {
@@ -110,52 +113,72 @@ export function PWABanner() {
     };
     navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
 
+    const triggerUpdate = (sw: ServiceWorker) => {
+      setUpdateSW(sw);
+      setBanner('update');
+      setCountdown(5);
+      // Auto-reload after 5 seconds if user doesn't click
+      clearTimeout(autoReloadTimer.current);
+      clearInterval(countdownInterval.current);
+      countdownInterval.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) { clearInterval(countdownInterval.current); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
+      autoReloadTimer.current = setTimeout(() => {
+        clearInterval(countdownInterval.current);
+        sw.postMessage({ type: 'SKIP_WAITING' });
+      }, 5000);
+    };
+
     // Initial registration
     navigator.serviceWorker.register('/sw.js').then((registration) => {
-      // If a new SW is already waiting after initial load, show banner (user just arrived)
+      // If a new SW is already waiting after initial load, show banner
       if (registration.waiting && navigator.serviceWorker.controller) {
-        setUpdateSW(registration.waiting);
-        setBanner('update');
+        triggerUpdate(registration.waiting);
       }
 
-      // When a new SW is found during install phase
+      // When a new SW is found during install phase (from update() call)
       registration.addEventListener('updatefound', () => {
         const newSW = registration.installing;
         if (!newSW) return;
 
         newSW.addEventListener('statechange', () => {
           if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            // New SW is installed and waiting — auto-update
-            setUpdateSW(newSW);
-            newSW.postMessage({ type: 'SKIP_WAITING' });
+            triggerUpdate(newSW);
           }
         });
       });
 
       // Auto-check for updates every 2 minutes
-      intervalRef.current = setInterval(() => {
+      updateInterval.current = setInterval(() => {
         registration.update().catch(() => {});
       }, 120_000);
 
       // Also check on visibility change (user comes back to tab)
-      visibleHandler.current = () => {
+      visibilityHandler.current = () => {
         if (document.visibilityState === 'visible') {
           registration.update().catch(() => {});
         }
       };
-      document.addEventListener('visibilitychange', visibleHandler.current);
+      document.addEventListener('visibilitychange', visibilityHandler.current);
     }).catch(() => {
       // SW registration failed — silent
     });
 
     return () => {
       navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
-      clearInterval(intervalRef.current);
-      document.removeEventListener('visibilitychange', visibleHandler.current);
+      clearInterval(updateInterval.current);
+      clearTimeout(autoReloadTimer.current);
+      clearInterval(countdownInterval.current);
+      document.removeEventListener('visibilitychange', visibilityHandler.current);
     };
   }, []);
 
   const handleUpdate = () => {
+    clearTimeout(autoReloadTimer.current);
+    clearInterval(countdownInterval.current);
     if (updateSW) {
       updateSW.postMessage({ type: 'SKIP_WAITING' });
     } else {
@@ -165,6 +188,8 @@ export function PWABanner() {
   };
 
   const dismissUpdate = () => {
+    clearTimeout(autoReloadTimer.current);
+    clearInterval(countdownInterval.current);
     setBanner(null);
   };
 
@@ -187,7 +212,7 @@ export function PWABanner() {
           <div className="w-10 h-10 rounded-full bg-white bg-opacity-20 flex items-center justify-center text-xl shrink-0">📦</div>
           <div className="flex-1 min-w-0">
             <div className="font-bold text-sm">New Update Available</div>
-            <div className="text-xs text-white text-opacity-80">A fresh version of Omix Community is ready</div>
+            <div className="text-xs text-white text-opacity-80">Refreshing in {countdown}s &mdash; a fresh version is ready</div>
           </div>
           <button onClick={handleUpdate}
             className="bg-white text-[var(--accent)] rounded-xl px-4 py-2 text-sm font-bold hover:bg-opacity-90 transition-all whitespace-nowrap shrink-0">
