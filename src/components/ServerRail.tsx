@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Store } from '../utils/store';
 import type { Server } from '../types';
 
-export function ServerRail({ isMobile, currentView }: { isMobile: boolean; currentView: string }) {
+export function ServerRail({ isMobile, currentView, onDMClick }: { isMobile: boolean; currentView: string; onDMClick: () => void }) {
   const [servers, setServers] = useState<Server[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
@@ -45,6 +45,19 @@ export function ServerRail({ isMobile, currentView }: { isMobile: boolean; curre
         <img src="logo.jpg" className="w-full h-full object-cover" alt="Home" />
         <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-1 h-5 bg-white rounded-r-full hidden group-hover:block" />
       </div>
+
+      <button
+        onClick={onDMClick}
+        className={`w-12 h-12 rounded-[24px] hover:rounded-[16px] flex items-center justify-center cursor-pointer transition-all duration-200 overflow-hidden relative group ${
+          currentView === 'dms' ? 'rounded-[16px] bg-[var(--accent)]' : 'bg-[var(--bg-chat)]'
+        }`}
+        title="Direct Messages"
+      >
+        <svg className="icon-message-square text-xl" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+        <div className={`absolute -left-3 top-1/2 -translate-y-1/2 w-1 h-5 bg-white rounded-r-full ${currentView === 'dms' ? 'block' : 'hidden group-hover:block'}`} />
+      </button>
 
       <div className="w-8 h-[2px] bg-[var(--bg-hover)] my-1 rounded-full" />
 

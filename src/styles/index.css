@@ -4,16 +4,19 @@
 
 @layer theme {
   :root {
-    --bg-rail: #1e1f22;
+    --bg-rail: #1a1b2e;
     --bg-sidebar: #2b2d31;
     --bg-chat: #313338;
     --bg-hover: #3f4147;
     --bg-message-hover: #2e3035;
-    --accent: #5865f2;
-    --accent-hover: #4752c4;
+    --accent: #520ff6;
+    --accent-hover: #4308d0;
+    --accent-glow: rgba(82,15,246,0.3);
     --text-primary: #f2f3f5;
     --text-muted: #949ba4;
     --online: #23a559;
+    --msg-bg: #2b2d31;
+    --msg-bg-own: #1e1f22;
   }
 }
 
@@ -30,11 +33,11 @@
 
 @layer components {
   .btn-accent {
-    @apply bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-medium rounded transition-colors;
+    @apply bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-medium rounded transition-all;
   }
 
   .scroll-custom::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
   .scroll-custom::-webkit-scrollbar-track {
     background: transparent;
@@ -43,11 +46,20 @@
     background-color: #1a1b1e;
     border-radius: 4px;
   }
+  .scroll-custom::-webkit-scrollbar-thumb:hover {
+    background-color: #2b2d31;
+  }
 }
 
 @layer utilities {
   .animate-fade-up {
     animation: fadeSlideUp 0.4s ease forwards;
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease both;
+  }
+  .animate-slide-in {
+    animation: slideIn 0.3s ease both;
   }
   .animate-shimmer {
     background: linear-gradient(90deg, #2b2d31 25%, #3f4147 50%, #2b2d31 75%);
@@ -71,6 +83,16 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 @keyframes shimmer {
   0% { background-position: -200px 0; }
   100% { background-position: calc(200px + 100%) 0; }
@@ -85,6 +107,10 @@
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Focus visible for accessibility */

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { WelcomeScreen } from './components/WelcomeScreen';
-import { ErrorBoundary } from './components/ErrorBoundary';
 import { Store } from './utils/store';
 
 function App() {

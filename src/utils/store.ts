@@ -1,5 +1,5 @@
 import { db, firebase } from './firebase';
-import type { Message, Channel, Server, User, UnreadCounts, TypingUser } from '../types';
+import type { Message, Channel, Server, User, UnreadCounts, TypingUser, DMChannel } from '../types';
 
 const SESSION_ID = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 const TYPING_TIMEOUT = 3000;
@@ -31,6 +31,7 @@ type Listener = () => void;
 interface StoreState {
   servers: Server[];
   channels: Channel[];
+  dmChannels: DMChannel[];
   messages: Message[];
   pinnedMessages: Message[];
   typingUsers: TypingUser[];
@@ -43,12 +44,14 @@ interface StoreState {
   typingListeners: Listener[];
   presenceListeners: Listener[];
   pinListeners: Listener[];
+  dmListeners: Listener[];
   unreadCounts: UnreadCounts;
 }
 
 const state: StoreState = {
   servers: [],
   channels: [],
+  dmChannels: [],
   messages: [],
   pinnedMessages: [],
   typingUsers: [],
@@ -61,6 +64,7 @@ const state: StoreState = {
   typingListeners: [],
   presenceListeners: [],
   pinListeners: [],
+  dmListeners: [],
   unreadCounts: {},
 };
 
@@ -111,6 +115,56 @@ export const Store = {
   },
   get unreadCounts() { return state.unreadCounts; },
   get sessionId() { return SESSION_ID; },
+
+  // === DM CHANNELS ===
+  get dmChannels() { return state.dmChannels; },
+
+  subscribeDMChannels(cb: (dms: DMChannel[]) => void) {
+    const currentUserId = SESSION_ID;
+    const unsub = db.collection('dmChannels')
+      .where('participants', 'array-contains', currentUserId)
+      .onSnapshot((snap: firebase.firestore.QuerySnapshot) => {
+        state.dmChannels = snap.docs.map(d => ({ id: d.id, ...d.data() } as DMChannel));
+        notify('dmChannels', state.dmChannels);
+        cb(state.dmChannels);
+      });
+    state.dmListeners.push(unsub);
+    return unsub;
+  },
+
+  cleanupDMChannels() {
+    state.dmListeners.forEach(u => u());
+    state.dmListeners = [];
+  },
+
+  async createOrGetDMChannel(otherUserId: string): Promise<string> {
+    const currentUserId = SESSION_ID;
+    if (currentUserId === otherUserId) throw new Error('Cannot create DM with yourself');
+
+    // Check if DM already exists
+    const existingQuery = await db.collection('dmChannels')
+      .where('participants', 'array-contains', currentUserId)
+      .get();
+
+    for (const doc of existingQuery.docs) {
+      const data = doc.data() as DMChannel;
+      if (data.participants.includes(otherUserId)) {
+        return doc.id;
+      }
+    }
+
+    // Create new DM channel
+    const ref = await db.collection('dmChannels').add({
+      participants: [currentUserId, otherUserId],
+      participantNames: {
+        [currentUserId]: state.displayName || 'Anonymous',
+        [otherUserId]: state.onlineUsers.find(u => u.id === otherUserId)?.name || 'Unknown',
+      },
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    return ref.id;
+  },
 
   // === ADMIN ===
   async verifyAdminPassword(password: string): Promise<boolean> {
@@ -241,6 +295,20 @@ export const Store = {
       ...(opts.mentions && { mentions: opts.mentions }),
     };
     await db.collection('messages').add(msg);
+    
+    // Update DM channel last message info
+    if (channelId.startsWith('dm_') || channelId.includes('_')) {
+      // Check if it's a DM channel
+      const dmRef = db.collection('dmChannels').doc(channelId);
+      const dmSnap = await dmRef.get();
+      if (dmSnap.exists) {
+        await dmRef.update({
+          lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+          lastMessageText: text.trim().substring(0, 100),
+          lastMessageAuthor: displayName || 'Anonymous',
+        });
+      }
+    }
   },
 
   async editMessage(messageId: string, newText: string): Promise<void> {
@@ -316,7 +384,7 @@ export const Store = {
   startTyping(channelId: string, displayName: string): void {
     if (!channelId || !displayName) return;
     const ref = db.collection('typing').doc(`${channelId}_${SESSION_ID}`);
-    await ref.set({
+    ref.set({
       channelId,
       name: displayName,
       sessionId: SESSION_ID,
@@ -437,6 +505,51 @@ export const Store = {
 
   off(type: string, cb: (type: string, data: unknown) => void) {
     callbacks.get(type)?.delete(cb);
+  },
+
+  // === PROFILES ===
+  profileCache: {} as Record<string, { name: string; avatar: string; color: string }>,
+
+  async saveProfile(data: { name?: string; avatar?: string }): Promise<void> {
+    const ref = db.collection('profiles').doc(SESSION_ID);
+    const update: Record<string, unknown> = {};
+    if (data.name !== undefined) update.name = data.name;
+    if (data.avatar !== undefined) update.avatar = data.avatar;
+    update.color = getUserColor(data.name || state.displayName || 'Guest');
+    update.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    await ref.set(update, { merge: true });
+    // Update local cache
+    this.profileCache[SESSION_ID] = {
+      name: data.name || state.displayName || 'Guest',
+      avatar: data.avatar || '',
+      color: getUserColor(data.name || state.displayName || 'Guest'),
+    };
+    notify('profile', { sessionId: SESSION_ID, ...this.profileCache[SESSION_ID] });
+  },
+
+  async getProfile(sessionId: string): Promise<{ name: string; avatar: string; color: string } | null> {
+    // Check cache first
+    if (this.profileCache[sessionId]) return this.profileCache[sessionId];
+    const snap = await db.collection('profiles').doc(sessionId).get();
+    if (snap.exists) {
+      const data = snap.data() as { name: string; avatar: string; color: string };
+      this.profileCache[sessionId] = data;
+      return data;
+    }
+    return null;
+  },
+
+  subscribeProfile(cb: (profile: { sessionId: string; name: string; avatar: string; color: string }) => void) {
+    const unsub = db.collection('profiles').doc(SESSION_ID)
+      .onSnapshot((snap: firebase.firestore.DocumentSnapshot) => {
+        if (snap.exists) {
+          const data = snap.data() as { name: string; avatar: string; color: string };
+          this.profileCache[SESSION_ID] = data;
+          cb({ sessionId: SESSION_ID, ...data });
+        }
+      });
+    state.listeners.push(unsub);
+    return unsub;
   },
 };
 

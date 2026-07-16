@@ -17,15 +17,18 @@ if (!firebase.apps.length) {
 
 export const db = firebase.firestore();
 
-try {
-  await db.enablePersistence({ synchronizeTabs: true });
-} catch (err: unknown) {
-  const error = err as { code?: string };
-  if (error.code === 'failed-precondition') {
-    console.warn('Persistence failed: multiple tabs open');
-  } else if (error.code === 'unimplemented') {
-    console.warn('Persistence not supported');
+// Enable offline persistence
+(async () => {
+  try {
+    await db.enablePersistence({ synchronizeTabs: true });
+  } catch (err: unknown) {
+    const error = err as { code?: string };
+    if (error.code === 'failed-precondition') {
+      console.warn('Persistence failed: multiple tabs open');
+    } else if (error.code === 'unimplemented') {
+      console.warn('Persistence not supported');
+    }
   }
-}
+})();
 
 export { firebase };

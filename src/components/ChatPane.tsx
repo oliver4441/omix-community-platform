@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Store, SESSION_ID, getUserColor } from '../utils/store';
-import type { Message, User } from '../types';
+import { Store, SESSION_ID } from '../utils/store';
+import type { Message, User, TypingUser } from '../types';
 
 const EMOJIS = ['😀','😎','🔥','❤️','🎉','👍','😂','🥳','💯','👏','✨','🤣','🙌','💪','😍','🤔','👀','🚀','💀','🤝','😭','😤','💜','🌟'];
 const MENTION_RE = /@(\w*)$/;
@@ -13,7 +13,7 @@ export function ChatPane({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [channelName, setChannelName] = useState('general');
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [showEmoji, setShowEmoji] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
@@ -22,6 +22,7 @@ export function ChatPane({
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, { name: string; avatar: string; color: string }>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -29,7 +30,18 @@ export function ChatPane({
     const channelId = Store.currentChannelId;
     if (!channelId) return;
 
-    const unsubMsg = Store.subscribeMessages(channelId, (_, data) => setMessages(data as Message[]));
+    const unsubMsg = Store.subscribeMessages(channelId, (_, data) => {
+      const msgs = data as Message[];
+      setMessages(msgs);
+      // Load profiles for new authors
+      const authorIds = new Set(msgs.map(m => m.sessionId).filter(Boolean));
+      authorIds.forEach(async (sid) => {
+        if (sid && !profiles[sid]) {
+          const p = await Store.getProfile(sid);
+          if (p) setProfiles(prev => ({ ...prev, [sid]: p }));
+        }
+      });
+    });
     const unsubTyping = Store.subscribeTyping(channelId, setTypingUsers);
     const unsubPins = Store.subscribePins(channelId, setPins);
     const unsubPresence = Store.subscribePresence(setOnlineUsers);
@@ -39,10 +51,20 @@ export function ChatPane({
     const handler = (e: CustomEvent) => {
       Store.cleanup();
       Store.markChannelRead(e.detail);
-      Store.subscribeMessages(e.detail, (_, data) => setMessages(data as Message[]));
+      Store.subscribeMessages(e.detail, (_, data) => {
+        const msgs = data as Message[];
+        setMessages(msgs);
+        const authorIds = new Set(msgs.map(m => m.sessionId).filter(Boolean));
+        authorIds.forEach(async (sid) => {
+          if (sid && !profiles[sid]) {
+            const p = await Store.getProfile(sid);
+            if (p) setProfiles(prev => ({ ...prev, [sid]: p }));
+          }
+        });
+      });
       Store.subscribeTyping(e.detail, setTypingUsers);
       Store.subscribePins(e.detail, setPins);
-      const ch = Store.state.channels.find(c => c.id === e.detail);
+      const ch = Store.channels.find(c => c.id === e.detail);
       if (ch) setChannelName(ch.name);
       setShowEmoji(false);
       setReplyTo(null);
@@ -73,7 +95,7 @@ export function ChatPane({
     if (val.trim()) Store.startTyping(Store.currentChannelId, displayName || 'Anonymous');
     else Store.stopTyping(Store.currentChannelId);
 
-    const cursorPos = e.target.selectionStart;
+    const cursorPos = e.target.selectionStart ?? 0;
     const beforeCursor = val.substring(0, cursorPos);
     const match = beforeCursor.match(MENTION_RE);
     if (match) {
@@ -85,7 +107,7 @@ export function ChatPane({
   };
 
   const insertMention = (name: string) => {
-    const cursorPos = inputRef.current?.selectionStart || 0;
+    const cursorPos = inputRef.current?.selectionStart ?? 0;
     const before = input.substring(0, cursorPos);
     const after = input.substring(cursorPos);
     const match = before.match(MENTION_RE);
@@ -107,15 +129,20 @@ export function ChatPane({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    Store.uploadFile(file, Store.currentChannelId, displayName || 'Anonymous');
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      Store.sendMessage(Store.currentChannelId, '', displayName || 'Anonymous', { fileUrl: ev.target?.result as string, fileType: file.type });
+    };
+    reader.readAsDataURL(file);
     e.target.value = '';
   };
 
+  const allNames = Array.from(new Set([
+    ...onlineUsers.map(u => u.name),
+    ...messages.map(m => m.author).filter(a => a !== displayName),
+  ]));
   const filteredMentions = showMentions && mentionQuery
-    ? [...new Set([
-        ...onlineUsers.map(u => u.name),
-        ...messages.map(m => m.author).filter(a => a !== displayName),
-      ]).filter(n => n.toLowerCase().includes(mentionQuery)).slice(0, 6)]
+    ? allNames.filter(n => n.toLowerCase().includes(mentionQuery)).slice(0, 6)
     : [];
 
   if (isMobile && currentView !== 'chat') return null;
@@ -148,18 +175,26 @@ export function ChatPane({
         {messages.length === 0 && (
           <div className="flex-1 flex items-center justify-center text-[var(--text-muted)] text-sm">No messages yet. Say something!</div>
         )}
-        {messages.map(msg => {
+        {messages.map((msg, index) => {
           const isOwn = msg.sessionId === SESSION_ID;
           const reactions = msg.reactions || {};
           const hasFile = !!msg.fileUrl;
           const msgColor = msg.color || '#5865f2';
           const isPinned = msg.pinned;
           const avatarLetter = (msg.author || '?').charAt(0).toUpperCase();
+          const msgProfile = profiles[msg.sessionId];
+          const msgAvatar = msgProfile?.avatar;
 
           return (
-            <div key={msg.id} className="flex gap-3 hover:bg-[var(--bg-message-hover)] -mx-4 px-4 py-1.5 rounded-lg group relative transition-colors">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 mt-0.5 cursor-pointer" style={{ backgroundColor: msgColor }} title={msg.author}>
-                {avatarLetter}
+            <div key={msg.id} className={`flex gap-3 -mx-4 px-4 py-2 rounded-lg group relative transition-all animate-slide-in ${isOwn ? 'bg-[var(--msg-bg-own)]' : 'bg-[var(--msg-bg)]'} hover:bg-[var(--bg-message-hover)]`} style={{ animationDelay: `${index * 30}ms` }}>
+              <div className="w-10 h-10 rounded-full shrink-0 mt-0.5 cursor-pointer overflow-hidden"
+                style={{ backgroundColor: msgAvatar ? 'transparent' : msgColor }}
+                title={msg.author} onClick={() => setReplyTo({ id: msg.id, author: msg.author, text: msg.text })}>
+                {msgAvatar ? (
+                  <img src={msgAvatar} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">{avatarLetter}</div>
+                )}
               </div>
 
               <div className="flex-1 min-w-0">
@@ -246,7 +281,7 @@ export function ChatPane({
             <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" style={{ animation: 'pulse 1.5s ease infinite', animationDelay: '0.2s' }} />
             <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" style={{ animation: 'pulse 1.5s ease infinite', animationDelay: '0.4s' }} />
           </div>
-          <span>{typingUsers.join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...</span>
+          <span>{typingUsers.map(u => u.name).join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...</span>
         </div>
       )}
 

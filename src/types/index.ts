@@ -165,3 +165,18 @@ export interface FileAttachment {
   uploadedAt: Date;
   messageId?: string;
 }
+
+export interface DMChannel {
+  id: string;
+  participants: string[];
+  participantNames: Record<string, string>;
+  createdAt: Date | { toDate: () => Date };
+  lastMessageAt?: Date | { toDate: () => Date };
+  lastMessageText?: string;
+  lastMessageAuthor?: string;
+}
+
+export interface DMChannelWithDetails extends DMChannel {
+  otherUser: User;
+  unreadCount: number;
+}

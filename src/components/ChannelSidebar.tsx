@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Store, getUserColor } from '../utils/store';
 import type { Channel, User } from '../types';
+import { SettingsModal } from './SettingsModal';
 
 export function ChannelSidebar({
   isMobile,
@@ -13,6 +14,8 @@ export function ChannelSidebar({
   const [showCreate, setShowCreate] = useState(false);
   const [newChanName, setNewChanName] = useState('');
   const [unreadCounts, setUnreadCounts] = useState(Store.unreadCounts);
+  const [showSettings, setShowSettings] = useState(false);
+  const [avatar, setAvatar] = useState('');
   const unreadInterval = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -38,6 +41,18 @@ export function ChannelSidebar({
       window.removeEventListener('serverChanged', handler as EventListener);
     };
   }, [displayName]);
+
+  // Load profile for avatar
+  useEffect(() => {
+    Store.getProfile(Store.sessionId).then(profile => {
+      if (profile?.avatar) setAvatar(profile.avatar);
+    });
+    const unsub = Store.subscribeProfile(p => {
+      if (p.avatar) setAvatar(p.avatar);
+      else setAvatar('');
+    });
+    return unsub;
+  }, []);
 
   const selectChannel = (channelId: string) => {
     Store.currentChannelId = channelId;
@@ -154,26 +169,47 @@ export function ChannelSidebar({
 
       <div className="h-[52px] bg-[#232428] px-2 py-1.5 flex items-center gap-2 shrink-0">
         <div className="relative cursor-pointer hover:opacity-80 transition-opacity rounded-full w-8 h-8 flex-shrink-0"
-          style={{ backgroundColor: getUserColor(displayName) + '33' }}>
-          <div className="w-full h-full rounded-full flex items-center justify-center text-sm font-bold" style={{ color: getUserColor(displayName) }}>
-            {(displayName || '?').charAt(0).toUpperCase()}
-          </div>
+          onClick={() => setShowSettings(true)}
+          style={{ backgroundColor: avatar ? 'transparent' : (getUserColor(displayName) + '33') }}>
+          {avatar ? (
+            <img src={avatar} className="w-full h-full rounded-full object-cover" alt="" />
+          ) : (
+            <div className="w-full h-full rounded-full flex items-center justify-center text-sm font-bold"
+              style={{ color: getUserColor(displayName) }}>
+              {(displayName || '?').charAt(0).toUpperCase()}
+            </div>
+          )}
           <div className="absolute bottom-0 right-0 w-3 h-3 bg-[var(--online)] rounded-full border-2 border-[#232428]" />
         </div>
-        <div className="flex-col flex-1 min-w-0 cursor-pointer">
+        <div className="flex-col flex-1 min-w-0 cursor-pointer" onClick={() => setShowSettings(true)}>
           <div className="text-sm font-semibold text-[var(--text-primary)] truncate flex items-center gap-1">
             {displayName || 'Guest'}
             {Store.isAdmin && <span className="text-xs text-[var(--accent)] font-medium">🛡️</span>}
           </div>
-          <div className="text-xs text-[var(--text-muted)] truncate hover:underline">Online</div>
+          <div className="text-xs text-[var(--text-muted)] truncate">Online</div>
         </div>
         <div className="flex gap-1">
+          <button onClick={() => setShowSettings(true)}
+            className="w-8 h-8 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Settings">
+            <svg className="icon-settings text-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
           <button onClick={() => { if (confirm('Sign out?')) { localStorage.removeItem('omix_username'); localStorage.removeItem('omix_admin'); window.location.reload(); } }}
             className="w-8 h-8 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Sign out">
             <svg className="icon-log-out text-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
           </button>
         </div>
       </div>
+
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          displayName={displayName}
+          currentAvatar={avatar}
+        />
+      )}
     </div>
   );
 }

@@ -44,15 +44,15 @@ export function WelcomeScreen({ onEnter }: { onEnter: (name: string) => void }) 
     <div className="min-h-screen flex items-center justify-center p-4"
       style={{ background: 'linear-gradient(135deg, #0f0f13 0%, #1a1b2e 30%, #1e1f22 60%, #0f0f13 100%)' }}>
       <div className="fixed inset-0 animate-gradient pointer-events-none opacity-30"
-        style={{ background: 'linear-gradient(135deg, #5865f2 0%, transparent 30%, #4752c4 50%, transparent 70%, #5865f2 100%)', backgroundSize: '200% 200%' }} />
+        style={{ background: 'linear-gradient(135deg, #520ff6 0%, transparent 30%, #7c3af0 50%, transparent 70%, #520ff6 100%)', backgroundSize: '200% 200%' }} />
       <div className="fixed inset-0 pointer-events-none opacity-[0.03]"
-        style={{ backgroundImage: 'radial-gradient(circle, #5865f2 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+        style={{ backgroundImage: 'radial-gradient(circle, #520ff6 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
 
       <div className="bg-[var(--bg-sidebar)] rounded-2xl p-8 w-full max-w-md shadow-2xl border border-gray-800 relative animate-fade-up" style={{ animationDelay: '0.1s' }}>
         <div className="text-center mb-6">
           <img src="/logo.jpg"
             className="w-24 h-24 rounded-2xl mx-auto mb-4 shadow-lg object-cover"
-            alt="Omix Community" style={{ boxShadow: '0 8px 32px rgba(88,101,242,0.25)' }} />
+            alt="Omix Community" style={{ boxShadow: '0 8px 32px rgba(82,15,246,0.3)' }} />
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Omix Community</h1>
           <p className="text-[var(--text-muted)] text-sm mt-1">Join the conversation</p>
         </div>
