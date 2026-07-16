@@ -109,12 +109,15 @@ export function DMSidebar({
             <div
               key={dm.id}
               onClick={() => selectDM(dm)}
-              className={`flex items-center gap-3 px-2 py-2 mx-1 rounded-lg cursor-pointer group mb-[2px] transition-colors ${
+              className={`flex items-center gap-3 px-2 py-2 mx-1 rounded-lg cursor-pointer group mb-[2px] transition-all relative ${
                 Store.currentChannelId === dm.id
                   ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
                   : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
               }`}
             >
+              <div className={`absolute -left-1 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full transition-all ${
+                Store.currentChannelId === dm.id ? 'bg-[var(--accent)] scale-y-100' : 'bg-transparent scale-y-0 group-hover:scale-y-100 group-hover:bg-[var(--text-muted)]'
+              }`} />
               <div className="relative w-10 h-10 shrink-0">
                 <div className="w-full h-full rounded-full flex items-center justify-center text-white font-bold text-sm"
                   style={{ backgroundColor: otherUser?.color || '#5865f2' }}>

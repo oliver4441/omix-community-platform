@@ -98,17 +98,23 @@ export function ChannelSidebar({
 
       <div className="text-xs text-[var(--text-muted)] px-4 py-2 flex items-center gap-1.5 border-b border-[var(--bg-rail)]">
         <div className="w-2 h-2 rounded-full bg-[var(--online)]" style={{ animation: 'pulse 2s ease infinite' }} />
-        <span>{onlineUsers.length} online</span>
-        <div className="flex ml-2">
-          {onlineUsers.slice(0, 5).map(u => (
-            <div key={u.id} className="w-5 h-5 rounded-full bg-[var(--bg-hover)] -ml-1 border-2 border-[var(--bg-sidebar)] flex items-center justify-center text-[9px] font-bold"
-              style={{ color: u.color || '#fff', backgroundColor: u.color ? u.color + '33' : '' }} title={u.name}>
-              {u.name.charAt(0).toUpperCase()}
+        <span className="font-medium">{onlineUsers.length} online</span>
+        <div className="flex ml-auto">
+          {onlineUsers.slice(0, 8).map(u => (
+            <div key={u.id} className="w-5 h-5 rounded-full -ml-1 border-2 border-[var(--bg-sidebar)] overflow-hidden cursor-pointer transition-transform hover:scale-110" title={u.name}>
+              {u.avatar ? (
+                <img src={u.avatar} className="w-full h-full object-cover" alt="" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[9px] font-bold text-white"
+                  style={{ backgroundColor: u.color || '#5865f2' }}>
+                  {u.name.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
           ))}
-          {onlineUsers.length > 5 && (
-            <div className="w-5 h-5 rounded-full bg-[var(--bg-hover)] -ml-1 border-2 border-[var(--bg-sidebar)] flex items-center justify-center text-[9px] text-[var(--text-muted)]">
-              +{onlineUsers.length - 5}
+          {onlineUsers.length > 8 && (
+            <div className="w-5 h-5 rounded-full bg-[var(--bg-hover)] -ml-1 border-2 border-[var(--bg-sidebar)] flex items-center justify-center text-[9px] text-[var(--text-muted)] font-bold">
+              +{onlineUsers.length - 8}
             </div>
           )}
         </div>
@@ -129,12 +135,15 @@ export function ChannelSidebar({
                 <div
                   key={channel.id}
                   onClick={() => selectChannel(channel.id)}
-                  className={`flex items-center px-2 py-1.5 mx-1 rounded-lg cursor-pointer group mb-[2px] transition-colors ${
+                  className={`flex items-center px-2 py-1.5 mx-1 rounded-lg cursor-pointer group mb-[2px] transition-all relative ${
                     activeChannel === channel.id
                       ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
                       : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                   }`}
                 >
+                  <div className={`absolute -left-1 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full transition-all ${
+                    activeChannel === channel.id ? 'bg-[var(--accent)] scale-y-100' : 'bg-transparent scale-y-0 group-hover:scale-y-100 group-hover:bg-[var(--text-muted)]'
+                  }`} />
                   <svg className="icon-hash text-lg mr-1.5 opacity-60 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-5m0 0l-5-5m5 5H6" /></svg>
                   <span className={`truncate flex-1 text-sm ${unread > 0 ? 'text-[var(--text-primary)] font-semibold' : ''}`}>{channel.name}</span>
                   {Store.isAdmin && (

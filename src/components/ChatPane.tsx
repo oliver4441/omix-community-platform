@@ -176,101 +176,205 @@ export function ChatPane({
           <div className="flex-1 flex items-center justify-center text-[var(--text-muted)] text-sm">No messages yet. Say something!</div>
         )}
         {messages.map((msg, index) => {
-          const isOwn = msg.sessionId === SESSION_ID;
-          const reactions = msg.reactions || {};
-          const hasFile = !!msg.fileUrl;
-          const msgColor = msg.color || '#5865f2';
-          const isPinned = msg.pinned;
-          const avatarLetter = (msg.author || '?').charAt(0).toUpperCase();
-          const msgProfile = profiles[msg.sessionId];
-          const msgAvatar = msgProfile?.avatar;
+            const isOwn = msg.sessionId === SESSION_ID;
+            const reactions = msg.reactions || {};
+            const hasFile = !!msg.fileUrl;
+            const msgColor = msg.color || '#5865f2';
+            const isPinned = msg.pinned;
+            const avatarLetter = (msg.author || '?').charAt(0).toUpperCase();
+            const msgProfile = profiles[msg.sessionId];
+            const msgAvatar = msgProfile?.avatar;
 
-          return (
-            <div key={msg.id} className={`flex gap-3 -mx-4 px-4 py-2 rounded-lg group relative transition-all animate-slide-in ${isOwn ? 'bg-[var(--msg-bg-own)]' : 'bg-[var(--msg-bg)]'} hover:bg-[var(--bg-message-hover)]`} style={{ animationDelay: `${index * 30}ms` }}>
-              <div className="w-10 h-10 rounded-full shrink-0 mt-0.5 cursor-pointer overflow-hidden"
-                style={{ backgroundColor: msgAvatar ? 'transparent' : msgColor }}
-                title={msg.author} onClick={() => setReplyTo({ id: msg.id, author: msg.author, text: msg.text })}>
-                {msgAvatar ? (
-                  <img src={msgAvatar} className="w-full h-full object-cover" alt="" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">{avatarLetter}</div>
-                )}
-              </div>
+            // Message grouping: same author within 5 minutes
+            const prevMsg = index > 0 ? messages[index - 1] : null;
+            const getMsgTime = (ts: unknown): number => {
+              if (!ts) return 0;
+              if (ts instanceof Date) return ts.getTime();
+              if (typeof ts === 'object' && ts !== null && 'toDate' in ts) return (ts as { toDate: () => Date }).toDate().getTime();
+              return new Date(String(ts)).getTime();
+            };
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-semibold cursor-pointer hover:underline text-sm" style={{ color: msgColor }}>
-                    {msg.author}
-                    {msg.sessionId === SESSION_ID && <span className="text-xs text-[var(--text-muted)] font-normal ml-1">(you)</span>}
-                  </span>
-                  <span className="text-xs text-[var(--text-muted)]">
-                    {msg.timestamp ? (msg.timestamp instanceof Date ? msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date(msg.timestamp as unknown as string | number).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : ''}
-                    {msg.edited ? ' (edited)' : ''}
-                    {isPinned ? ' 📌' : ''}
-                  </span>
-                  <span className="hidden group-hover:inline-flex gap-1 ml-2 transition-opacity">
-                    <button onClick={() => setReplyTo({ id: msg.id, author: msg.author, text: msg.text })} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Reply">💬</button>
-                    <button onClick={() => toggleReaction(msg.id, '👍')} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">😊</button>
-                    {(isOwn || Store.isAdmin) && (
-                      <button onClick={() => startEdit(msg)} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Edit">✏️</button>
-                    )}
-                    {(isOwn || Store.isAdmin) && (
-                      <button onClick={() => confirmDelete(msg.id)} className="text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors" title="Delete">🗑️</button>
-                    )}
-                    {Store.isAdmin && (
-                      <button onClick={() => togglePin(msg.id)} className="text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors" title={isPinned ? 'Unpin' : 'Pin'}>
-                        {isPinned ? '📌' : '📍'}
-                      </button>
-                    )}
-                  </span>
-                </div>
+            const isGrouped = !!(
+              prevMsg &&
+              prevMsg.sessionId === msg.sessionId &&
+              msg.timestamp && prevMsg.timestamp &&
+              Math.abs(getMsgTime(msg.timestamp) - getMsgTime(prevMsg.timestamp)) < 300_000
+            );
 
-                {msg.replyTo && (
-                  <div className="text-xs text-[var(--text-muted)] border-l-2 border-[var(--text-muted)] pl-2 mt-0.5 mb-1 italic">
-                    Replying to <span className="font-medium text-[var(--text-primary)]">{msg.replyTo.author}</span>: {msg.replyTo.text}
-                  </div>
-                )}
+            const formatTime = (ts: unknown): string => {
+              if (!ts) return '';
+              const d = ts instanceof Date ? ts : typeof ts === 'object' && ts !== null && 'toDate' in ts ? (ts as { toDate: () => Date }).toDate() : new Date(String(ts));
+              return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            };
 
-                {editing === msg.id ? (
-                  <div className="flex gap-2 mt-1">
-                    <input type="text" value={editText} onChange={e => setEditText(e.target.value)}
-                      className="bg-[#1e1f22] text-[var(--text-primary)] rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-[var(--accent)] flex-1"
-                      onKeyDown={e => { if (e.key === 'Enter') saveEdit(msg.id); if (e.key === 'Escape') setEditing(null); }} autoFocus />
-                    <button onClick={() => saveEdit(msg.id)} className="text-xs text-[var(--accent)] hover:underline">Save</button>
-                    <button onClick={() => setEditing(null)} className="text-xs text-[var(--text-muted)] hover:underline">Cancel</button>
-                  </div>
-                ) : (
+            return (
+              <div key={msg.id} className={`flex gap-3 -mx-4 px-4 py-1 rounded-lg group relative transition-all ${isOwn ? 'bg-[var(--msg-bg-own)]' : 'bg-[var(--msg-bg)]'} hover:bg-[var(--bg-message-hover)]`}
+                style={{ animation: 'fadeSlideUp 0.2s ease both', animationDelay: `${Math.min(index * 15, 300)}ms` }}>
+                {isGrouped ? (
+                  /* Grouped message — no avatar, compact */
                   <>
-                    <span className="text-[var(--text-primary)] leading-relaxed text-sm">{msg.text}</span>
-                    {hasFile && msg.fileType?.startsWith('image') && (
-                      <div className="mt-2"><img src={msg.fileUrl} className="max-w-xs max-h-72 rounded-xl border border-gray-700" alt="Shared image" /></div>
-                    )}
-                    {hasFile && msg.fileType && !msg.fileType.startsWith('image') && (
-                      <div className="mt-2">
-                        <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] hover:underline text-sm flex items-center gap-1">📎 View attachment</a>
+                    <div className="w-10 shrink-0 flex items-start justify-center pt-0.5">
+                      <span className="text-[10px] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap select-none">
+                        {formatTime(msg.timestamp)}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0 -mt-1">
+                      <div className="flex items-start gap-2">
+                        <span className="text-[var(--text-primary)] leading-relaxed text-sm break-words flex-1">{msg.text}</span>
+                        <span className="hidden group-hover:inline-flex gap-0.5 ml-auto transition-opacity shrink-0 pt-1">
+                          <button onClick={() => setReplyTo({ id: msg.id, author: msg.author, text: msg.text })} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Reply">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a5 5 0 015 5v2M3 10l6 6m-6-6l6-6" /></svg>
+                          </button>
+                          <button onClick={() => toggleReaction(msg.id, '👍')} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">😊</button>
+                          {(isOwn || Store.isAdmin) && (
+                            <button onClick={() => startEdit(msg)} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Edit">
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            </button>
+                          )}
+                          {(isOwn || Store.isAdmin) && (
+                            <button onClick={() => confirmDelete(msg.id)} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors" title="Delete">
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                          )}
+                          {Store.isAdmin && (
+                            <button onClick={() => togglePin(msg.id)} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors" title={isPinned ? 'Unpin' : 'Pin'}>
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                            </button>
+                          )}
+                        </span>
                       </div>
-                    )}
+                      {hasFile && msg.fileType?.startsWith('image') && (
+                        <div className="mt-1"><img src={msg.fileUrl} className="max-w-xs max-h-72 rounded-xl border border-gray-700" alt="" /></div>
+                      )}
+                      {hasFile && msg.fileType && !msg.fileType.startsWith('image') && (
+                        <div className="mt-1">
+                          <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] hover:underline text-sm flex items-center gap-1">📎 View attachment</a>
+                        </div>
+                      )}
+                      {msg.replyTo && (
+                        <div className="text-xs text-[var(--text-muted)] border-l-2 border-[var(--text-muted)] pl-2 mt-0.5 mb-0.5 italic">
+                          Replying to <span className="font-medium text-[var(--text-primary)]">{msg.replyTo.author}</span>: {msg.replyTo.text}
+                        </div>
+                      )}
+                      {editing === msg.id && (
+                        <div className="flex gap-2 mt-1">
+                          <input type="text" value={editText} onChange={e => setEditText(e.target.value)}
+                            className="bg-[#1e1f22] text-[var(--text-primary)] rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-[var(--accent)] flex-1"
+                            onKeyDown={e => { if (e.key === 'Enter') saveEdit(msg.id); if (e.key === 'Escape') setEditing(null); }} autoFocus />
+                          <button onClick={() => saveEdit(msg.id)} className="text-xs text-[var(--accent)] hover:underline">Save</button>
+                          <button onClick={() => setEditing(null)} className="text-xs text-[var(--text-muted)] hover:underline">Cancel</button>
+                        </div>
+                      )}
+                      <div className="flex gap-1 mt-0.5 flex-wrap">
+                        {Object.entries(reactions).map(([emoji, users]) => {
+                          const hasReacted = users.indexOf(displayName) > -1;
+                          return (
+                            <button key={emoji} onClick={() => toggleReaction(msg.id, emoji)}
+                              className={`text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer transition-all ${
+                                hasReacted ? 'bg-[var(--accent)] bg-opacity-20 border border-[var(--accent)]' : 'bg-[var(--bg-hover)] hover:bg-[var(--bg-hover)] border border-transparent'
+                              }`}>
+                              <span>{emoji}</span>
+                              <span className="text-xs text-[var(--text-muted)]">{users.length}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* Full message — with avatar + name */
+                  <>
+                    <div className="w-10 h-10 rounded-full shrink-0 mt-0.5 cursor-pointer overflow-hidden"
+                      style={{ backgroundColor: msgAvatar ? 'transparent' : msgColor }}
+                      title={msg.author} onClick={() => setReplyTo({ id: msg.id, author: msg.author, text: msg.text })}>
+                      {msgAvatar ? (
+                        <img src={msgAvatar} className="w-full h-full object-cover" alt="" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">{avatarLetter}</div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-semibold cursor-pointer hover:underline text-sm" style={{ color: msgColor }}>
+                          {msg.author}
+                          {msg.sessionId === SESSION_ID && <span className="text-xs text-[var(--text-muted)] font-normal ml-1">(you)</span>}
+                        </span>
+                        <span className="text-xs text-[var(--text-muted)]">
+                          {formatTime(msg.timestamp)}
+                          {msg.edited ? ' (edited)' : ''}
+                          {isPinned ? ' 📌' : ''}
+                        </span>
+                        <span className="hidden group-hover:inline-flex gap-0.5 ml-2 transition-opacity">
+                          <button onClick={() => setReplyTo({ id: msg.id, author: msg.author, text: msg.text })} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Reply">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a5 5 0 015 5v2M3 10l6 6m-6-6l6-6" /></svg>
+                          </button>
+                          <button onClick={() => toggleReaction(msg.id, '👍')} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">😊</button>
+                          {(isOwn || Store.isAdmin) && (
+                            <button onClick={() => startEdit(msg)} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Edit">
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            </button>
+                          )}
+                          {(isOwn || Store.isAdmin) && (
+                            <button onClick={() => confirmDelete(msg.id)} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors" title="Delete">
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                          )}
+                          {Store.isAdmin && (
+                            <button onClick={() => togglePin(msg.id)} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors" title={isPinned ? 'Unpin' : 'Pin'}>
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                            </button>
+                          )}
+                        </span>
+                      </div>
+
+                      {msg.replyTo && (
+                        <div className="text-xs text-[var(--text-muted)] border-l-2 border-[var(--text-muted)] pl-2 mt-0.5 mb-1 italic">
+                          Replying to <span className="font-medium text-[var(--text-primary)]">{msg.replyTo.author}</span>: {msg.replyTo.text}
+                        </div>
+                      )}
+
+                      {editing === msg.id ? (
+                        <div className="flex gap-2 mt-1">
+                          <input type="text" value={editText} onChange={e => setEditText(e.target.value)}
+                            className="bg-[#1e1f22] text-[var(--text-primary)] rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-[var(--accent)] flex-1"
+                            onKeyDown={e => { if (e.key === 'Enter') saveEdit(msg.id); if (e.key === 'Escape') setEditing(null); }} autoFocus />
+                          <button onClick={() => saveEdit(msg.id)} className="text-xs text-[var(--accent)] hover:underline">Save</button>
+                          <button onClick={() => setEditing(null)} className="text-xs text-[var(--text-muted)] hover:underline">Cancel</button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="text-[var(--text-primary)] leading-relaxed text-sm">{msg.text}</span>
+                          {hasFile && msg.fileType?.startsWith('image') && (
+                            <div className="mt-2"><img src={msg.fileUrl} className="max-w-xs max-h-72 rounded-xl border border-gray-700" alt="" /></div>
+                          )}
+                          {hasFile && msg.fileType && !msg.fileType.startsWith('image') && (
+                            <div className="mt-2">
+                              <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] hover:underline text-sm flex items-center gap-1">📎 View attachment</a>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {Object.entries(reactions).map(([emoji, users]) => {
+                          const hasReacted = users.indexOf(displayName) > -1;
+                          return (
+                            <button key={emoji} onClick={() => toggleReaction(msg.id, emoji)}
+                              className={`text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer transition-all ${
+                                hasReacted ? 'bg-[var(--accent)] bg-opacity-20 border border-[var(--accent)]' : 'bg-[var(--bg-hover)] hover:bg-[var(--bg-hover)] border border-transparent'
+                              }`}>
+                              <span>{emoji}</span>
+                              <span className="text-xs text-[var(--text-muted)]">{users.length}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </>
                 )}
-
-                <div className="flex gap-1 mt-1 flex-wrap">
-                  {Object.entries(reactions).map(([emoji, users]) => {
-                    const hasReacted = users.indexOf(displayName) > -1;
-                    return (
-                      <button key={emoji} onClick={() => toggleReaction(msg.id, emoji)}
-                        className={`text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer transition-all ${
-                          hasReacted ? 'bg-[var(--accent)] bg-opacity-20 border border-[var(--accent)]' : 'bg-[var(--bg-hover)] hover:bg-[var(--bg-hover)] border border-transparent'
-                        }`}>
-                        <span>{emoji}</span>
-                        <span className="text-xs text-[var(--text-muted)]">{users.length}</span>
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
         <div ref={messagesEndRef} />
       </div>
 
@@ -319,26 +423,44 @@ export function ChatPane({
       )}
 
       <div className="p-4 pt-2 shrink-0">
-        <form onSubmit={sendMsg} className="bg-[#383a40] rounded-xl p-3 flex items-start gap-3 border border-gray-700 focus-within:border-[var(--accent)] transition-all duration-200">
-          <label className="text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-sidebar)] rounded-full p-1 h-6 w-6 flex items-center justify-center shrink-0 cursor-pointer transition-colors">
-            <svg className="icon-plus text-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+        <form onSubmit={sendMsg} className="bg-[#383a40] rounded-xl p-2 flex items-end gap-2 border border-gray-700 focus-within:border-[var(--accent)] transition-all duration-200">
+          <label className="w-9 h-9 rounded-lg bg-[var(--bg-sidebar)] hover:bg-[var(--bg-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0 cursor-pointer transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+            </svg>
             <input type="file" onChange={handleFileSelect} className="hidden" accept="image/*,.pdf,.doc,.docx,.txt" />
           </label>
-          <input
-            ref={inputRef}
-            id="chat-input"
-            type="text"
-            value={input}
-            onChange={handleInput}
-            placeholder={`Message #${channelName}${Store.isAdmin ? ' (Admin)' : ''}`}
-            className="bg-transparent border-none outline-none text-[var(--text-primary)] w-full placeholder-[var(--text-muted)] text-sm"
-            autoComplete="off"
-          />
-          <div className="flex items-center gap-2 text-[var(--text-muted)] shrink-0">
-            <button type="button" onClick={() => setShowEmoji(!showEmoji)} className="icon-smile text-lg hover:text-[var(--text-primary)] cursor-pointer transition-colors">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </button>
-            <button type="submit" className={`text-lg hover:text-[var(--text-primary)] cursor-pointer transition-colors ${input.trim() ? 'text-[var(--accent)]' : ''}`}>➤</button>
+          <div className="flex-1 flex items-end gap-2">
+            <input
+              ref={inputRef}
+              id="chat-input"
+              type="text"
+              value={input}
+              onChange={handleInput}
+              placeholder={`Message #${channelName}${Store.isAdmin ? ' (Admin)' : ''}`}
+              className="bg-transparent border-none outline-none text-[var(--text-primary)] w-full placeholder-[var(--text-muted)] text-sm py-1.5 leading-5"
+              autoComplete="off"
+            />
+            <div className="flex items-center gap-1 shrink-0 pb-0.5">
+              <button type="button" onClick={() => setShowEmoji(!showEmoji)}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                  showEmoji ? 'bg-[var(--accent)] bg-opacity-20 text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+                }`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+              <button type="submit" disabled={!input.trim()}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                  input.trim()
+                    ? 'bg-[var(--accent)] text-white hover:opacity-90'
+                    : 'text-[var(--text-muted)]'
+                }`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
         </form>
       </div>
