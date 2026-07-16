@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { PWABanner } from './components/PWABanner';
 import { Store } from './utils/store';
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
     <div className={`h-screen w-full flex bg-[var(--bg-chat)] overflow-hidden ${loaded ? 'opacity-100' : 'opacity-0'}`}
       style={{ transition: 'opacity 0.3s ease' }}>
       <Layout isMobile={isMobile} currentView={view} setView={setView} displayName={savedName} />
+      <PWABanner />
     </div>
   );
 }

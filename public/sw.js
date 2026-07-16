@@ -50,6 +50,13 @@ self.addEventListener('activate', function(event) {
   self.clients.claim();
 });
 
+// Listen for skip-waiting message from the app
+self.addEventListener('message', function(event) {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 // Fetch — cache-first for static, network-first for everything else
 self.addEventListener('fetch', function(event) {
   var requestUrl = new URL(event.request.url);
