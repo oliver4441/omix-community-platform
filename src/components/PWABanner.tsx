@@ -94,44 +94,65 @@ export function PWABanner() {
     setBanner(null);
   };
 
-  // --- UPDATE BANNER ---
+  // --- SERVICE WORKER + AUTO-UPDATE (every 2min) ---
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    let isFirstInstall = true;
+    let refreshing = false;
+    const intervalRef = { current: 0 as unknown as ReturnType<typeof setInterval> };
+    const visibleHandler = { current: () => {} };
 
-    navigator.serviceWorker.register('/sw.js').then((reg) => {
-      // Check if there's already a waiting worker
-      if (reg.waiting) {
-        setUpdateSW(reg.waiting);
-        if (!isFirstInstall) setBanner('update');
+    // Listen for controller change (after skipWaiting) — reload
+    const onControllerChange = () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+
+    // Initial registration
+    navigator.serviceWorker.register('/sw.js').then((registration) => {
+      // If a new SW is already waiting after initial load, show banner (user just arrived)
+      if (registration.waiting && navigator.serviceWorker.controller) {
+        setUpdateSW(registration.waiting);
+        setBanner('update');
       }
 
-      reg.addEventListener('updatefound', () => {
-        const newSW = reg.installing;
+      // When a new SW is found during install phase
+      registration.addEventListener('updatefound', () => {
+        const newSW = registration.installing;
         if (!newSW) return;
 
         newSW.addEventListener('statechange', () => {
           if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            // New SW installed but waiting — there's an update
+            // New SW is installed and waiting — auto-update
             setUpdateSW(newSW);
-            setBanner('update');
+            newSW.postMessage({ type: 'SKIP_WAITING' });
           }
         });
       });
 
-      isFirstInstall = false;
+      // Auto-check for updates every 2 minutes
+      intervalRef.current = setInterval(() => {
+        registration.update().catch(() => {});
+      }, 120_000);
+
+      // Also check on visibility change (user comes back to tab)
+      visibleHandler.current = () => {
+        if (document.visibilityState === 'visible') {
+          registration.update().catch(() => {});
+        }
+      };
+      document.addEventListener('visibilitychange', visibleHandler.current);
     }).catch(() => {
       // SW registration failed — silent
     });
 
-    // Listen for controller change (after skipWaiting)
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (refreshing) return;
-      refreshing = true;
-      window.location.reload();
-    });
+    return () => {
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      clearInterval(intervalRef.current);
+      document.removeEventListener('visibilitychange', visibleHandler.current);
+    };
   }, []);
 
   const handleUpdate = () => {
