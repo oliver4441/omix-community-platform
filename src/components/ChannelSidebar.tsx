@@ -176,7 +176,8 @@ export function ChannelSidebar({
         ))}
       </div>
 
-      <div className="h-[52px] bg-[#232428] px-2 py-1.5 flex items-center gap-2 shrink-0">
+      <div className="h-[52px] bg-[var(--bg-sidebar)] border-t border-[var(--bg-rail)] px-2 py-1.5 flex items-center gap-2 shrink-0 relative">
+        <div className="absolute top-0 left-4 right-4 h-[1px] bg-[var(--bg-rail)]" />
         <div className="relative cursor-pointer hover:opacity-80 transition-opacity rounded-full w-8 h-8 flex-shrink-0"
           onClick={() => setShowSettings(true)}
           style={{ backgroundColor: avatar ? 'transparent' : (getUserColor(displayName) + '33') }}>

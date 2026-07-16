@@ -163,7 +163,7 @@ export function ChatPane({
       </div>
 
       {pins.length > 0 && (
-        <div className="bg-[#232428] border-b border-[var(--bg-rail)] px-4 py-2 text-sm flex items-center gap-2 shrink-0">
+        <div className="bg-[var(--bg-sidebar)] border-b border-[var(--bg-rail)] px-4 py-2 text-sm flex items-center gap-2 shrink-0">
           <span className="text-[var(--accent)] font-bold">📌 Pinned</span>
           <span className="text-[var(--text-muted)] truncate">{pins[0].text.substring(0, 60)}{pins[0].text.length > 60 ? '...' : ''}</span>
           <span className="text-[var(--text-muted)] text-xs">— {pins[0].author}</span>
@@ -171,7 +171,7 @@ export function ChatPane({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto scroll-custom p-4 flex flex-col gap-[2px]" id="messages-container">
+      <div className="flex-1 overflow-y-auto scroll-custom px-3 py-3 flex flex-col" id="messages-container">
         {messages.length === 0 && (
           <div className="flex-1 flex items-center justify-center text-[var(--text-muted)] text-sm">No messages yet. Say something!</div>
         )}
@@ -208,36 +208,36 @@ export function ChatPane({
             };
 
             return (
-              <div key={msg.id} className={`flex gap-3 -mx-4 px-4 py-1 rounded-lg group relative transition-all ${isOwn ? 'bg-[var(--msg-bg-own)]' : 'bg-[var(--msg-bg)]'} hover:bg-[var(--bg-message-hover)]`}
+              <div key={msg.id} className={`flex gap-2 -mx-3 px-3 ${isGrouped ? 'py-0.5' : 'pt-3 pb-0.5'} rounded-lg group relative transition-all ${isOwn ? 'bg-[var(--msg-bg-own)]' : 'bg-[var(--msg-bg)]'} hover:bg-[var(--bg-message-hover)]`}
                 style={{ animation: 'fadeSlideUp 0.2s ease both', animationDelay: `${Math.min(index * 15, 300)}ms` }}>
                 {isGrouped ? (
                   /* Grouped message — no avatar, compact */
                   <>
-                    <div className="w-10 shrink-0 flex items-start justify-center pt-0.5">
+                    <div className="w-10 shrink-0 flex items-start justify-center pt-1">
                       <span className="text-[10px] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap select-none">
                         {formatTime(msg.timestamp)}
                       </span>
                     </div>
-                    <div className="flex-1 min-w-0 -mt-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-start gap-2">
                         <span className="text-[var(--text-primary)] leading-relaxed text-sm break-words flex-1">{msg.text}</span>
-                        <span className="hidden group-hover:inline-flex gap-0.5 ml-auto transition-opacity shrink-0 pt-1">
-                          <button onClick={() => setReplyTo({ id: msg.id, author: msg.author, text: msg.text })} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Reply">
+                        <span className="hidden group-hover:inline-flex gap-0.5 ml-auto transition-opacity shrink-0 pt-0.5">
+                          <button onClick={() => setReplyTo({ id: msg.id, author: msg.author, text: msg.text })} className="w-7 h-7 rounded-lg hover:bg-black/20 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Reply">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a5 5 0 015 5v2M3 10l6 6m-6-6l6-6" /></svg>
                           </button>
-                          <button onClick={() => toggleReaction(msg.id, '👍')} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">😊</button>
+                          <button onClick={() => toggleReaction(msg.id, '👍')} className="w-7 h-7 rounded-lg hover:bg-black/20 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">😊</button>
                           {(isOwn || Store.isAdmin) && (
-                            <button onClick={() => startEdit(msg)} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Edit">
+                            <button onClick={() => startEdit(msg)} className="w-7 h-7 rounded-lg hover:bg-black/20 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Edit">
                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </button>
                           )}
                           {(isOwn || Store.isAdmin) && (
-                            <button onClick={() => confirmDelete(msg.id)} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors" title="Delete">
+                            <button onClick={() => confirmDelete(msg.id)} className="w-7 h-7 rounded-lg hover:bg-black/20 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors" title="Delete">
                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                           )}
                           {Store.isAdmin && (
-                            <button onClick={() => togglePin(msg.id)} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors" title={isPinned ? 'Unpin' : 'Pin'}>
+                            <button onClick={() => togglePin(msg.id)} className="w-7 h-7 rounded-lg hover:bg-black/20 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors" title={isPinned ? 'Unpin' : 'Pin'}>
                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
                             </button>
                           )}
@@ -305,22 +305,22 @@ export function ChatPane({
                           {isPinned ? ' 📌' : ''}
                         </span>
                         <span className="hidden group-hover:inline-flex gap-0.5 ml-2 transition-opacity">
-                          <button onClick={() => setReplyTo({ id: msg.id, author: msg.author, text: msg.text })} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Reply">
+                          <button onClick={() => setReplyTo({ id: msg.id, author: msg.author, text: msg.text })} className="w-7 h-7 rounded-lg hover:bg-black/20 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Reply">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a5 5 0 015 5v2M3 10l6 6m-6-6l6-6" /></svg>
                           </button>
-                          <button onClick={() => toggleReaction(msg.id, '👍')} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">😊</button>
+                          <button onClick={() => toggleReaction(msg.id, '👍')} className="w-7 h-7 rounded-lg hover:bg-black/20 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">😊</button>
                           {(isOwn || Store.isAdmin) && (
-                            <button onClick={() => startEdit(msg)} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Edit">
+                            <button onClick={() => startEdit(msg)} className="w-7 h-7 rounded-lg hover:bg-black/20 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Edit">
                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </button>
                           )}
                           {(isOwn || Store.isAdmin) && (
-                            <button onClick={() => confirmDelete(msg.id)} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors" title="Delete">
+                            <button onClick={() => confirmDelete(msg.id)} className="w-7 h-7 rounded-lg hover:bg-black/20 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors" title="Delete">
                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                           )}
                           {Store.isAdmin && (
-                            <button onClick={() => togglePin(msg.id)} className="w-6 h-6 rounded hover:bg-[var(--bg-hover)] flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors" title={isPinned ? 'Unpin' : 'Pin'}>
+                            <button onClick={() => togglePin(msg.id)} className="w-7 h-7 rounded-lg hover:bg-black/20 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors" title={isPinned ? 'Unpin' : 'Pin'}>
                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
                             </button>
                           )}
@@ -414,7 +414,7 @@ export function ChatPane({
       )}
 
       {replyTo && (
-        <div className="px-4 pt-2 pb-0 flex items-center gap-2 text-sm bg-[#232428] mx-4 rounded-t-lg border-t border-l border-r border-gray-700">
+        <div className="px-4 pt-2 pb-0 flex items-center gap-2 text-sm bg-[var(--bg-sidebar)] mx-4 rounded-t-lg border-t border-l border-r border-gray-700">
           <span className="text-[var(--text-muted)]">💬 Replying to</span>
           <span className="font-medium text-[var(--text-primary)]">{replyTo.author}</span>
           <span className="text-[var(--text-muted)] truncate flex-1">{replyTo.text.substring(0, 40)}</span>
@@ -423,7 +423,7 @@ export function ChatPane({
       )}
 
       <div className="p-4 pt-2 shrink-0">
-        <form onSubmit={sendMsg} className="bg-[#383a40] rounded-xl p-2 flex items-end gap-2 border border-gray-700 focus-within:border-[var(--accent)] transition-all duration-200">
+        <form onSubmit={sendMsg} className="bg-[var(--chat-input)] rounded-xl p-2 flex items-end gap-2 border border-gray-700 focus-within:border-[var(--accent)] transition-all duration-200">
           <label className="w-9 h-9 rounded-lg bg-[var(--bg-sidebar)] hover:bg-[var(--bg-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0 cursor-pointer transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />

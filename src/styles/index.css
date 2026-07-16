@@ -4,26 +4,29 @@
 
 @layer theme {
   :root {
-    --bg-rail: #1a1b2e;
-    --bg-sidebar: #2b2d31;
-    --bg-chat: #313338;
-    --bg-hover: #3f4147;
-    --bg-message-hover: #2e3035;
-    --accent: #520ff6;
-    --accent-hover: #4308d0;
-    --accent-glow: rgba(82,15,246,0.3);
-    --text-primary: #f2f3f5;
-    --text-muted: #949ba4;
+    --bg-rail: #17212b;
+    --bg-sidebar: #1f2c38;
+    --bg-chat: #0e1621;
+    --bg-hover: #2b3f51;
+    --bg-message-hover: #182634;
+    --accent: #3390EC;
+    --accent-hover: #2A7FD6;
+    --accent-glow: rgba(51,144,236,0.3);
+    --text-primary: #e8e8e8;
+    --text-muted: #8899a6;
     --online: #23a559;
-    --msg-bg: #2b2d31;
-    --msg-bg-own: #1e1f22;
+    --msg-bg: #182533;
+    --msg-bg-own: #2b5278;
+    --chat-input: #1f2c38;
+    --bubble-radius: 12px;
+    --bubble-radius-own: 12px;
   }
 }
 
 @layer base {
   body {
     @apply bg-[var(--bg-chat)] text-[var(--text-primary)] antialiased overflow-hidden;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
 
   * {
@@ -36,6 +39,10 @@
     @apply bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-medium rounded transition-all;
   }
 
+  .btn-ghost {
+    @apply text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors;
+  }
+
   .scroll-custom::-webkit-scrollbar {
     width: 6px;
   }
@@ -43,11 +50,11 @@
     background: transparent;
   }
   .scroll-custom::-webkit-scrollbar-thumb {
-    background-color: #1a1b1e;
+    background-color: #2b3f51;
     border-radius: 4px;
   }
   .scroll-custom::-webkit-scrollbar-thumb:hover {
-    background-color: #2b2d31;
+    background-color: #3a5268;
   }
 }
 
@@ -62,7 +69,7 @@
     animation: slideIn 0.3s ease both;
   }
   .animate-shimmer {
-    background: linear-gradient(90deg, #2b2d31 25%, #3f4147 50%, #2b2d31 75%);
+    background: linear-gradient(90deg, #1f2c38 25%, #2b3f51 50%, #1f2c38 75%);
     background-size: 200px 100%;
     animation: shimmer 1.5s infinite;
   }
@@ -72,7 +79,7 @@
   }
   .skeleton {
     border-radius: 8px;
-    background: linear-gradient(90deg, #2b2d31 25%, #3f4147 50%, #2b2d31 75%);
+    background: linear-gradient(90deg, #1f2c38 25%, #2b3f51 50%, #1f2c38 75%);
     background-size: 200px 100%;
     animation: shimmer 1.5s infinite;
   }
