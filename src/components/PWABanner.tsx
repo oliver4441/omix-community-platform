@@ -31,11 +31,13 @@ export function PWABanner() {
     const dismissed = localStorage.getItem('omix_install_banner_dismissed');
     if (dismissed === 'true') return;
 
-    // Listen for beforeinstallprompt
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !!(window as any).MSStream;
+
+    // Listen for beforeinstallprompt (Chrome/Android/Desktop)
     const handlePrompt = (e: Event) => {
       e.preventDefault();
       deferredPrompt.current = e;
-      showInstallAfterDelay();
+      setBanner('install');
     };
 
     const handleInstalled = () => {
@@ -47,27 +49,25 @@ export function PWABanner() {
     window.addEventListener('beforeinstallprompt', handlePrompt);
     window.addEventListener('appinstalled', handleInstalled);
 
-    // Fallback: show banner after 6s even if beforeinstallprompt hasn't fired
-    const fallbackTimer = setTimeout(() => {
-      if (!banner && !localStorage.getItem('omix_install_banner_dismissed')) {
-        setBanner('install');
-      }
-    }, 6000);
+    // iOS fallback: show banner with instructions after 6s
+    if (isIOS) {
+      const iosTimer = setTimeout(() => {
+        if (!localStorage.getItem('omix_install_banner_dismissed')) {
+          setBanner('install');
+        }
+      }, 6000);
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handlePrompt);
+        window.removeEventListener('appinstalled', handleInstalled);
+        clearTimeout(iosTimer);
+      };
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handlePrompt);
       window.removeEventListener('appinstalled', handleInstalled);
-      clearTimeout(fallbackTimer);
     };
   }, []);
-
-  const showInstallAfterDelay = () => {
-    setTimeout(() => {
-      if (!localStorage.getItem('omix_install_banner_dismissed')) {
-        setBanner('install');
-      }
-    }, 2000);
-  };
 
   const handleInstall = () => {
     if (deferredPrompt.current) {
@@ -81,14 +81,14 @@ export function PWABanner() {
         setBanner(null);
       });
     } else {
-      // iOS or unsupported — show instructions
+      // No beforeinstallprompt — must be iOS or browser doesn't support it
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !!(window as any).MSStream;
       if (isIOS) {
         alert('Tap Share → Add to Home Screen to install Omix Community.');
       } else {
-        // Try the standard install through browser menu
-        setBanner(null);
+        alert('To install: open this site in Chrome, tap the ⋮ menu → "Add to Home Screen"');
       }
+      setBanner(null);
     }
   };
 
