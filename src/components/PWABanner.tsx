@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
+import { Icon } from './Icon';
+import { setDeferredPrompt, clearDeferredPrompt, triggerInstall } from '../utils/installPrompt';
 
 type BannerType = 'install' | 'update' | null;
 
 export function PWABanner() {
   const [banner, setBanner] = useState<BannerType>(null);
   const [offline, setOffline] = useState(!navigator.onLine);
-  const deferredPrompt = useRef<Event | null>(null);
+  const [manualMode, setManualMode] = useState(false);
   const [updateSW, setUpdateSW] = useState<ServiceWorker | null>(null);
   const [countdown, setCountdown] = useState(0);
   const autoReloadTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -31,17 +33,14 @@ export function PWABanner() {
     const dismissed = localStorage.getItem('omix_install_banner_dismissed');
     if (dismissed === 'true') return;
 
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !!(window as any).MSStream;
-
     // Listen for beforeinstallprompt (Chrome/Android/Desktop)
     const handlePrompt = (e: Event) => {
-      e.preventDefault();
-      deferredPrompt.current = e;
+      setDeferredPrompt(e);
       setBanner('install');
     };
 
     const handleInstalled = () => {
-      deferredPrompt.current = null;
+      clearDeferredPrompt();
       setBanner(null);
       localStorage.setItem('omix_install_banner_dismissed', 'true');
     };
@@ -49,46 +48,29 @@ export function PWABanner() {
     window.addEventListener('beforeinstallprompt', handlePrompt);
     window.addEventListener('appinstalled', handleInstalled);
 
-    // iOS fallback: show banner with instructions after 6s
-    if (isIOS) {
-      const iosTimer = setTimeout(() => {
-        if (!localStorage.getItem('omix_install_banner_dismissed')) {
-          setBanner('install');
-        }
-      }, 6000);
-      return () => {
-        window.removeEventListener('beforeinstallprompt', handlePrompt);
-        window.removeEventListener('appinstalled', handleInstalled);
-        clearTimeout(iosTimer);
-      };
-    }
+    // Universal fallback: show banner after 12s even if beforeinstallprompt hasn't fired
+    // Chrome's PWA criteria can be strict — this ensures the option is visible
+    const fallbackTimer = setTimeout(() => {
+      if (!localStorage.getItem('omix_install_banner_dismissed')) {
+        setBanner('install');
+      }
+    }, 12000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handlePrompt);
       window.removeEventListener('appinstalled', handleInstalled);
+      clearTimeout(fallbackTimer);
     };
   }, []);
 
-  const handleInstall = () => {
-    if (deferredPrompt.current) {
-      const prompt = deferredPrompt.current as Event & { prompt: () => void; userChoice: Promise<{ outcome: string }> };
-      prompt.prompt();
-      prompt.userChoice.then((result) => {
-        if (result.outcome === 'accepted') {
-          localStorage.setItem('omix_install_banner_dismissed', 'true');
-        }
-        deferredPrompt.current = null;
-        setBanner(null);
-      });
-    } else {
-      // No beforeinstallprompt — must be iOS or browser doesn't support it
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !!(window as any).MSStream;
-      if (isIOS) {
-        alert('Tap Share → Add to Home Screen to install Omix Community.');
-      } else {
-        alert('To install: open this site in Chrome, tap the ⋮ menu → "Add to Home Screen"');
-      }
+  const handleInstall = async () => {
+    const installed = await triggerInstall();
+    if (installed) {
+      localStorage.setItem('omix_install_banner_dismissed', 'true');
       setBanner(null);
+    } else {
+      // No beforeinstallprompt — show manual instructions inline
+      setManualMode(true);
     }
   };
 
@@ -209,7 +191,9 @@ export function PWABanner() {
       style={{ [banner === 'update' ? 'top' : 'bottom']: 0, animation: 'fadeSlideUp 0.4s ease' }}>
       {banner === 'update' ? (
         <div className="bg-[var(--accent)] text-white rounded-2xl shadow-2xl mx-auto max-w-md mb-4 mt-4 p-4 flex items-center gap-3 border border-[var(--accent)] border-opacity-30">
-          <div className="w-10 h-10 rounded-full bg-white bg-opacity-20 flex items-center justify-center text-xl shrink-0">📦</div>
+          <div className="w-10 h-10 rounded-full bg-white bg-opacity-20 flex items-center justify-center shrink-0">
+            <Icon name="download" size={20} />
+          </div>
           <div className="flex-1 min-w-0">
             <div className="font-bold text-sm">New Update Available</div>
             <div className="text-xs text-white text-opacity-80">Refreshing in {countdown}s &mdash; a fresh version is ready</div>
@@ -219,21 +203,47 @@ export function PWABanner() {
             Update
           </button>
           <button onClick={dismissUpdate}
-            className="text-white text-opacity-60 hover:text-opacity-100 text-lg transition-opacity shrink-0">✕</button>
+            className="text-white text-opacity-60 hover:text-opacity-100 text-lg transition-opacity shrink-0" aria-label="Dismiss update notification">✕</button>
         </div>
       ) : banner === 'install' ? (
-        <div className="bg-[#2b2d31] text-white rounded-2xl shadow-2xl mx-auto max-w-md mb-4 p-4 flex items-center gap-3 border border-gray-700">
-          <div className="w-10 h-10 rounded-full bg-[var(--accent)] bg-opacity-20 flex items-center justify-center text-xl shrink-0">🚀</div>
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-sm">Install Omix Community</div>
-            <div className="text-xs text-[var(--text-muted)]">Get the full experience &mdash; fast, offline-ready</div>
-          </div>
-          <button onClick={handleInstall}
-            className="bg-[var(--accent)] text-white rounded-xl px-5 py-2 text-sm font-bold hover:opacity-90 transition-all whitespace-nowrap shrink-0">
-            Install
-          </button>
-          <button onClick={dismissInstall}
-            className="text-[var(--text-muted)] hover:text-white text-lg transition-colors shrink-0">✕</button>
+        <div className="bg-[#2b2d31] text-white rounded-2xl shadow-2xl mx-auto max-w-md mb-4 p-4 border border-gray-700">
+          {manualMode ? (
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-[var(--accent)] bg-opacity-20 flex items-center justify-center shrink-0">
+                  <Icon name="download" size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm">Install Omix Community</div>
+                  <div className="text-xs text-[var(--text-muted)]">Use your browser menu to install</div>
+                </div>
+                <button onClick={dismissInstall}
+                  className="text-[var(--text-muted)] hover:text-white text-lg transition-colors shrink-0" aria-label="Dismiss install banner">✕</button>
+              </div>
+              <div className="bg-[#1e1f22] rounded-xl p-3 text-xs text-[var(--text-muted)] space-y-2">
+                <div className="font-medium text-white text-sm mb-1">How to install:</div>
+                <div>• Chrome/Edge: tap the browser menu (⋮) &rarr; "Add to Home Screen"</div>
+                <div>• Safari (iPhone/iPad): tap Share (☐↑) &rarr; "Add to Home Screen"</div>
+                <div>• Samsung Internet: tap menu (☰) &rarr; "Add page to" &rarr; "Home screen"</div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[var(--accent)] bg-opacity-20 flex items-center justify-center shrink-0">
+                <Icon name="download" size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sm">Install Omix Community</div>
+                <div className="text-xs text-[var(--text-muted)]">Get the full experience &mdash; fast, offline-ready</div>
+              </div>
+              <button onClick={handleInstall}
+                className="bg-[var(--accent)] text-white rounded-xl px-5 py-2 text-sm font-bold hover:opacity-90 transition-all whitespace-nowrap shrink-0">
+                Install
+              </button>
+              <button onClick={dismissInstall}
+                className="text-[var(--text-muted)] hover:text-white text-lg transition-colors shrink-0" aria-label="Dismiss install banner">✕</button>
+            </div>
+          )}
         </div>
       ) : null}
     </div>

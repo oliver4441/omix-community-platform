@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Store } from '../utils/store';
 import type { DMChannel, User } from '../types';
+import { Icon } from './Icon';
+import { useToast } from './Toast';
 
 export function DMSidebar({
   isMobile,
@@ -13,6 +15,7 @@ export function DMSidebar({
   const [showNewDM, setShowNewDM] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const unreadInterval = useRef<ReturnType<typeof setInterval>>();
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsubDMs = Store.subscribeDMChannels((dms) => setDmChannels(dms as DMChannel[]));
@@ -30,6 +33,9 @@ export function DMSidebar({
 
   const selectDM = async (dmChannel: DMChannel) => {
     Store.currentChannelId = dmChannel.id;
+    Store.currentChannelType = 'dm';
+    const otherParticipant = dmChannel.participants.find(p => p !== Store.sessionId);
+    Store.currentDMChannelName = otherParticipant ? dmChannel.participantNames[otherParticipant] || 'Unknown' : 'Unknown';
     Store.markChannelRead(dmChannel.id);
     window.dispatchEvent(new CustomEvent('channelChanged', { detail: dmChannel.id }));
     if (isMobile) setView('chat');
@@ -41,7 +47,7 @@ export function DMSidebar({
       setShowNewDM(false);
       selectDM({ id: dmId } as DMChannel);
     } catch (e) {
-      alert('Failed to create DM');
+      toast('Failed to create DM', 'error');
     }
   };
 
@@ -59,9 +65,7 @@ export function DMSidebar({
   return (
     <div className="w-[240px] bg-[var(--bg-sidebar)] h-full flex flex-col flex-shrink-0" data-name="dm-sidebar" data-file="components/DMSidebar.tsx">
       <div className="h-12 border-b border-[var(--bg-rail)] flex items-center px-3 shadow-sm">
-        <svg className="icon-message-square text-xl text-[var(--text-muted)] mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
+        <Icon name="message-square" size={20} className="text-[var(--text-muted)] mr-2" />
         <span className="font-bold text-[var(--text-primary)] text-sm truncate">Direct Messages</span>
       </div>
 
@@ -77,9 +81,7 @@ export function DMSidebar({
           onClick={() => setShowNewDM(true)}
           className="w-full mt-2 btn-accent text-xs py-1.5 rounded flex items-center justify-center gap-1"
         >
-          <svg className="icon-plus text-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
+          <Icon name="plus" size={14} />
           New Message
         </button>
       </div>

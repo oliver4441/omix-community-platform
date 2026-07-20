@@ -1,40 +1,27 @@
-var CACHE_NAME = 'omix-cache-v4';
-var STATIC_CACHE = 'omix-static-v4';
-var urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/firebase-init.js',
-  '/app.js',
-  '/utils/store.js',
-  '/components/Layout.js',
-  '/components/ServerRail.js',
-  '/components/ChannelSidebar.js',
-  '/components/ChatPane.js',
-  '/components/MobileNav.js',
-  '/sw.js',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/icon-192-maskable.png',
-  '/icon-512-maskable.png',
-  '/logo.jpg',
-  '/logo-192.png',
-  '/logo-512.png',
-  '/logo-192-maskable.png',
-  '/logo-512-maskable.png'
-];
+// Firebase Cloud Messaging Service Worker + Cache
+importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
+importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
-// Install — cache all static assets
+firebase.initializeApp({
+  apiKey: "AIzaSy...45Zg",
+  authDomain: "omix-systems-cd1af.firebaseapp.com",
+  projectId: "omix-systems-cd1af",
+  storageBucket: "omix-systems-cd1af.firebasestorage.app",
+  messagingSenderId: "458479471215",
+  appId: "1:458479471215:web:c0210748800fdf51ff5b9a",
+});
+
+const messaging = firebase.messaging();
+
+var CACHE_NAME = 'omix-cache-v5';
+var STATIC_CACHE = 'omix-static-v5';
+
+// Install — skip waiting, activate immediately
 self.addEventListener('install', function(event) {
-  event.waitUntil(
-    caches.open(STATIC_CACHE).then(function(cache) {
-      return cache.addAll(urlsToCache);
-    })
-  );
   self.skipWaiting();
 });
 
-// Activate — clean old caches
+// Activate — clean old caches, take control
 self.addEventListener('activate', function(event) {
   event.waitUntil(
     caches.keys().then(function(cacheNames) {
@@ -45,37 +32,57 @@ self.addEventListener('activate', function(event) {
           return caches.delete(name);
         })
       );
+    }).then(function() {
+      return self.clients.claim();
     })
   );
-  self.clients.claim();
 });
 
-// Listen for skip-waiting message from the app
 self.addEventListener('message', function(event) {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
 
-// Fetch — cache-first for static, network-first for everything else
+// Fetch — network-first for SPA, cache-first for assets
 self.addEventListener('fetch', function(event) {
   var requestUrl = new URL(event.request.url);
 
-  // Only handle same-origin requests
+  // Only handle same-origin
   if (requestUrl.origin !== self.location.origin) return;
 
-  // For static assets (icons, manifest, js), use cache-first
-  if (requestUrl.pathname.match(/\.(png|svg|jpg|jpeg|gif|ico|webp)$/) ||
+  // Static assets: cache-first
+  if (requestUrl.pathname.match(/\.(png|svg|jpg|jpeg|gif|ico|webp|woff2?)$/) ||
       requestUrl.pathname === '/manifest.json') {
     event.respondWith(
       caches.match(event.request).then(function(response) {
-        return response || fetch(event.request);
+        return response || fetch(event.request).then(function(networkResponse) {
+          return caches.open(STATIC_CACHE).then(function(cache) {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+        });
       })
     );
     return;
   }
 
-  // For HTML and JS, use network-first with cache fallback (always serve fresh if online)
+  // JS/CSS: cache on first fetch
+  if (requestUrl.pathname.match(/\.(js|css)$/) && requestUrl.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      fetch(event.request).then(function(networkResponse) {
+        return caches.open(CACHE_NAME).then(function(cache) {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+      }).catch(function() {
+        return caches.match(event.request);
+      })
+    );
+    return;
+  }
+
+  // HTML/SPA: network-first with cached fallback
   event.respondWith(
     fetch(event.request).then(function(networkResponse) {
       if (networkResponse && networkResponse.status === 200) {
@@ -88,13 +95,66 @@ self.addEventListener('fetch', function(event) {
     }).catch(function() {
       return caches.match(event.request).then(function(cached) {
         if (cached) return cached;
-        // If index.html is requested offline, serve it from static cache
-        if (requestUrl.pathname === '/index.html' || requestUrl.pathname === '/') {
+        if (requestUrl.pathname === '/' || requestUrl.pathname === '/index.html') {
           return caches.match('/index.html');
         }
-        // For other uncached requests, return index.html (SPA fallback)
         return caches.match('/index.html');
       });
     })
   );
+});
+
+// Handle background push messages
+messaging.onBackgroundMessage(function(payload) {
+  var data = payload.data || {};
+  var notificationTitle = data.title || payload.notification && payload.notification.title || 'New message';
+  var notificationBody = data.body || payload.notification && payload.notification.body || '';
+  var channelId = data.channelId || '';
+  var serverId = data.serverId || '';
+
+  var notificationOptions = {
+    body: notificationBody,
+    icon: '/logo-192.png',
+    badge: '/logo-192.png',
+    tag: channelId || 'omix',
+    data: {
+      channelId: channelId,
+      serverId: serverId,
+      click_action: 'open_channel',
+    },
+    vibrate: [100, 50, 100],
+    requireInteraction: true,
+    silent: false,
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+
+  var data = event.notification.data || {};
+  var channelId = data.channelId;
+
+  var urlToOpen = new URL('/', self.location.origin);
+  if (channelId) {
+    urlToOpen.searchParams.set('channel', channelId);
+  }
+
+  var promiseChain = clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true,
+  }).then(function(windowClients) {
+    for (var i = 0; i < windowClients.length; i++) {
+      var client = windowClients[i];
+      if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+        client.postMessage({ type: 'OPEN_CHANNEL', channelId: channelId });
+        return client.focus();
+      }
+    }
+    return clients.openWindow(urlToOpen.toString());
+  });
+
+  event.waitUntil(promiseChain);
 });

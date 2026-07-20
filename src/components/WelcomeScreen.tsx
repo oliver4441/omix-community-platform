@@ -1,5 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Store } from '../utils/store';
+import { Icon } from './Icon';
 
 export function WelcomeScreen({ onEnter }: { onEnter: (name: string) => void }) {
   const [name, setName] = useState('');
@@ -7,6 +8,7 @@ export function WelcomeScreen({ onEnter }: { onEnter: (name: string) => void }) 
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
 
   useEffect(() => {
@@ -79,10 +81,18 @@ export function WelcomeScreen({ onEnter }: { onEnter: (name: string) => void }) 
           </div>
 
           {showAdmin && (
-            <div className="animate-fade-up">
-              <input type="password" onChange={e => setPassword(e.target.value)}
-                className="w-full bg-[#1e1f22] text-[var(--text-primary)] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[var(--accent)] border border-gray-700 transition-all"
+            <div className="animate-fade-up relative">
+              <input type={showPassword ? 'text' : 'password'} onChange={e => setPassword(e.target.value)}
+                className="w-full bg-[#1e1f22] text-[var(--text-primary)] rounded-lg p-3 pr-10 outline-none focus:ring-2 focus:ring-[var(--accent)] border border-gray-700 transition-all"
                 placeholder="Admin password" />
+              <button type="button" onClick={() => setShowPassword(p => !p)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                {showPassword ? (
+                  <Icon name="eye-off" size={16} />
+                ) : (
+                  <Icon name="eye" size={16} />
+                )}
+              </button>
             </div>
           )}
 
@@ -99,7 +109,7 @@ export function WelcomeScreen({ onEnter }: { onEnter: (name: string) => void }) 
           </button>
         </form>
 
-        <p className="text-center mt-6 text-xs text-[var(--text-muted)]">Built on Firebase — Real-time community chat</p>
+        <p className="text-center mt-6 text-xs text-[var(--text-muted)]">Designed by OmixSystems</p>
       </div>
     </div>
   );

@@ -11,3 +11,13 @@ build
 .vscode
 .idea
 *.tsbuildinfo
+.opencode/
+STEER.md
+storage.rules
+*.js
+!vite.config.ts
+!postcss.config.js
+!tailwind.config.js
+!firebase.json
+!public/sw.js
+!public/firebase-messaging-sw.js

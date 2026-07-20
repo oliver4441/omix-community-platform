@@ -1,13 +1,16 @@
 import firebase from 'firebase/app';
 import 'firebase/firestore';
+import 'firebase/auth';
+import 'firebase/storage';
+import 'firebase/messaging';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBt4YPsCAXOAr8a8SHDf-Do1eFCO5DelGU",
+  apiKey: "AIzaSyAs7C-OegYfoPxj8LOYNagZgcMi9yo45Zg",
   authDomain: "omix-systems-cd1af.firebaseapp.com",
   projectId: "omix-systems-cd1af",
   storageBucket: "omix-systems-cd1af.firebasestorage.app",
   messagingSenderId: "458479471215",
-  appId: "1:458479471215:web:1cda4dbc94ce069aff5b9a",
+  appId: "1:458479471215:web:c0210748800fdf51ff5b9a",
   measurementId: "G-D2FGF4ZLTD"
 };
 
@@ -16,6 +19,10 @@ if (!firebase.apps.length) {
 }
 
 export const db = firebase.firestore();
+export const auth = firebase.auth();
+export const storage = firebase.storage();
+export const messaging = firebase.messaging.isSupported() ? firebase.messaging() : null;
+export { firebase };
 
 // Enable offline persistence
 (async () => {
@@ -30,5 +37,3 @@ export const db = firebase.firestore();
     }
   }
 })();
-
-export { firebase };

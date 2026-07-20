@@ -43,6 +43,7 @@ export interface Channel {
   topic?: string;
   nsfw?: boolean;
   position: number;
+  icon?: string;
   createdAt: Date | { toDate: () => Date };
   permissionOverwrites?: PermissionOverwrite[];
 }
@@ -76,10 +77,14 @@ export interface Message {
     id: string;
     author: string;
     text: string;
+    color?: string;
   };
   threadId?: string;
   mentions?: string[];
   nonce?: string;
+  viewOnce?: boolean;
+  viewOnceViewed?: boolean;
+  viewOnceViewedAt?: Date | { toDate: () => Date };
 }
 
 export interface Reaction {
@@ -130,6 +135,18 @@ export interface UserSettings {
   keyboardShortcuts: boolean;
 }
 
+export interface UserStats {
+  xp: number;
+  level: number;
+  messagesSent: number;
+  reactionsReceived: number;
+  repliesReceived: number;
+  badges: string[];
+  lastMessageDate?: string;
+  joinDate?: string;
+  streakCount?: number;
+}
+
 export interface Thread {
   id: string;
   channelId: string;
@@ -154,6 +171,25 @@ export interface VoiceState {
   streaming: boolean;
   video: boolean;
   joinedAt: Date;
+}
+
+export interface ActiveCall {
+  channelId: string;
+  channelName: string;
+  roomName: string;
+  startedBy: string;
+  startedByDisplayName: string;
+  startedAt: Date | { toDate: () => Date };
+  active: boolean;
+  participantCount: number;
+}
+
+export interface CallParticipant {
+  id: string;
+  userId: string;
+  displayName: string;
+  channelId: string;
+  joinedAt: Date | { toDate: () => Date };
 }
 
 export interface FileAttachment {
