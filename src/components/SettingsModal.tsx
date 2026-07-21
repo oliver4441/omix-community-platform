@@ -3,7 +3,7 @@ import { Store, getSessionId, getUserColor } from '../utils/store';
 import { auth, db, firebase } from '../utils/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { Icon } from './Icon';
-import { triggerInstall } from '../utils/installPrompt';
+import { triggerInstall, waitForInstall } from '../utils/installPrompt';
 import { useToast } from './Toast';
 import type { IconName } from './Icon';
 
@@ -32,6 +32,7 @@ export function SettingsModal({
 
   // Install app state
   const [showInstallManual, setShowInstallManual] = useState(false);
+  const [installWaiting, setInstallWaiting] = useState(false);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || !!(navigator as any).standalone;
 
   // Password change
@@ -294,23 +295,34 @@ export function SettingsModal({
                       <div className="text-xs text-[var(--text-muted)]">Add to your home screen for the best experience</div>
                     </div>
                   </div>
-                  {!showInstallManual ? (
+                  {installWaiting ? (
+                    <div className="mt-3 flex items-center justify-center gap-2 py-2.5">
+                      <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full" style={{ animation: 'spin 0.8s linear infinite' }} />
+                      <span className="text-sm text-[var(--text-muted)]">Preparing install...</span>
+                    </div>
+                  ) : !showInstallManual ? (
                     <button onClick={async () => {
-                      const installed = await triggerInstall();
-                      if (!installed) setShowInstallManual(true);
+                      setInstallWaiting(true);
+                      const installed = await waitForInstall(8000);
+                      setInstallWaiting(false);
+                      if (!installed) {
+                        // Try one more time directly
+                        const direct = await triggerInstall();
+                        if (!direct) setShowInstallManual(true);
+                      }
                     }}
                       className="mt-3 w-full btn-accent py-2.5 rounded-lg font-semibold text-sm hover:scale-[1.02] active:scale-[0.98] transition-all">
                       Install Omix Community
                     </button>
                   ) : (
                     <div className="mt-3 bg-[#1e1f22] rounded-xl p-3 text-xs text-[var(--text-muted)] space-y-2">
-                      <div className="font-medium text-white text-sm mb-1">How to install:</div>
+                      <div className="font-medium text-white text-sm mb-1">Install this app:</div>
                       <div>• Chrome/Edge: tap menu (⋮) → "Add to Home Screen"</div>
                       <div>• Safari (iPhone/iPad): tap Share (☐↑) → "Add to Home Screen"</div>
                       <div>• Samsung Internet: tap menu (☰) → "Add page to" → "Home screen"</div>
                       <button onClick={() => setShowInstallManual(false)}
                         className="text-[var(--accent)] hover:underline mt-1 text-xs">
-                        Try automatic install
+                        Try again
                       </button>
                     </div>
                   )}

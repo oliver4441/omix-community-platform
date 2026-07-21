@@ -51,3 +51,23 @@ export async function triggerInstall(): Promise<boolean> {
   }
   return false;
 }
+
+// Wait for the install prompt to become available, with a timeout
+export async function waitForInstall(timeoutMs: number = 10000): Promise<boolean> {
+  if (deferredPrompt) {
+    return triggerInstall();
+  }
+  return new Promise((resolve) => {
+    const unsub = onInstallAvailableChange(async (available) => {
+      if (available) {
+        unsub();
+        const result = await triggerInstall();
+        resolve(result);
+      }
+    });
+    setTimeout(() => {
+      unsub();
+      resolve(false);
+    }, timeoutMs);
+  });
+}

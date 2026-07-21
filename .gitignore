@@ -21,3 +21,4 @@ storage.rules
 !firebase.json
 !public/sw.js
 !public/firebase-messaging-sw.js
+.vercel

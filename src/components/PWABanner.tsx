@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Icon } from './Icon';
-import { setDeferredPrompt, clearDeferredPrompt, triggerInstall } from '../utils/installPrompt';
+import { setDeferredPrompt, clearDeferredPrompt, triggerInstall, waitForInstall } from '../utils/installPrompt';
 
 type BannerType = 'install' | 'update' | null;
 
@@ -9,9 +9,22 @@ export function PWABanner() {
   const [offline, setOffline] = useState(!navigator.onLine);
   const [manualMode, setManualMode] = useState(false);
   const [updateSW, setUpdateSW] = useState<ServiceWorker | null>(null);
-  const [countdown, setCountdown] = useState(0);
+  const [countdown, setCountdown] = useState(3);
   const autoReloadTimer = useRef<ReturnType<typeof setTimeout>>();
   const countdownInterval = useRef<ReturnType<typeof setInterval>>();
+
+  // Clear all caches for a fresh start
+  const clearAllCaches = async () => {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  };
+
+  const performUpdate = async (sw: ServiceWorker) => {
+    await clearAllCaches();
+    sw.postMessage({ type: 'SKIP_WAITING' });
+  };
 
   // --- ONLINE/OFFLINE ---
   useEffect(() => {
@@ -64,13 +77,14 @@ export function PWABanner() {
   }, []);
 
   const handleInstall = async () => {
-    const installed = await triggerInstall();
+    const installed = await waitForInstall(8000);
     if (installed) {
       localStorage.setItem('omix_install_banner_dismissed', 'true');
       setBanner(null);
     } else {
-      // No beforeinstallprompt — show manual instructions inline
-      setManualMode(true);
+      // Try one more time directly
+      const direct = await triggerInstall();
+      if (!direct) setManualMode(true);
     }
   };
 
@@ -98,8 +112,8 @@ export function PWABanner() {
     const triggerUpdate = (sw: ServiceWorker) => {
       setUpdateSW(sw);
       setBanner('update');
-      setCountdown(5);
-      // Auto-reload after 5 seconds if user doesn't click
+      setCountdown(3);
+      // Auto-reload after 3 seconds if user doesn't click
       clearTimeout(autoReloadTimer.current);
       clearInterval(countdownInterval.current);
       countdownInterval.current = setInterval(() => {
@@ -110,8 +124,8 @@ export function PWABanner() {
       }, 1000);
       autoReloadTimer.current = setTimeout(() => {
         clearInterval(countdownInterval.current);
-        sw.postMessage({ type: 'SKIP_WAITING' });
-      }, 5000);
+        performUpdate(sw);
+      }, 3000);
     };
 
     // Initial registration
@@ -158,12 +172,13 @@ export function PWABanner() {
     };
   }, []);
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     clearTimeout(autoReloadTimer.current);
     clearInterval(countdownInterval.current);
     if (updateSW) {
-      updateSW.postMessage({ type: 'SKIP_WAITING' });
+      await performUpdate(updateSW);
     } else {
+      await clearAllCaches();
       window.location.reload();
     }
     setBanner(null);
