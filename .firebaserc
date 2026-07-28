@@ -1,1 +1,6 @@
-{"projects": {"default": "omix-systems-cd1af"}}
+{
+  "projects": {
+    "default": "omix-systems-cd1af"
+  },
+  "targets": {}
+}

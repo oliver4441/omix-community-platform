@@ -1,0 +1,231 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════
+   OS (Omix Social) — Design System
+   Dark-first · Purple · 20px corners · 8pt grid
+   ═══════════════════════════════════════ */
+
+@theme inline {
+  /* ── Fonts ── */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* ── Primary (Purple) ── */
+  --color-pri: #8B5CF6;
+  --color-pri-hover: #A78BFA;
+  --color-pri-muted: rgba(139, 92, 246, 0.15);
+  --color-pri-glow: rgba(139, 92, 246, 0.3);
+
+  /* ── Accent (Blue) ── */
+  --color-acc: #3B82F6;
+  --color-acc-hover: #60A5FA;
+  --color-acc-muted: rgba(59, 130, 246, 0.15);
+
+  /* ── Backgrounds (Very dark navy) ── */
+  --color-bg-deepest: #070B14;
+  --color-bg-deeper: #0B1120;
+  --color-bg-dark: #0F172A;
+  --color-bg-mid: #1E293B;
+  --color-bg-light: #334155;
+  --color-bg-hover: rgba(255, 255, 255, 0.05);
+  --color-bg-active: rgba(255, 255, 255, 0.08);
+  --color-bg-overlay: rgba(7, 11, 20, 0.8);
+
+  /* ── Text ── */
+  --color-txt: #F1F5F9;
+  --color-txt-secondary: #94A3B8;
+  --color-txt-muted: #64748B;
+  --color-txt-inverse: #0F172A;
+
+  /* ── Status ── */
+  --color-online: #22C55E;
+  --color-idle: #F59E0B;
+  --color-dnd: #EF4444;
+  --color-offline: #475569;
+
+  /* ── Borders ── */
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-border-light: rgba(255, 255, 255, 0.04);
+
+  /* ── Misc ── */
+  --color-danger: #EF4444;
+  --color-danger-hover: #F87171;
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+}
+
+/* ── Base styles ── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    height: 100%;
+    background-color: var(--color-bg-deeper);
+  }
+
+  body {
+    min-height: 100%;
+    background: var(--color-bg-deeper);
+    color: var(--color-txt);
+    font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+  }
+
+  ::selection {
+    background-color: var(--color-pri);
+    color: white;
+  }
+
+  /* Scrollbar — thin, dark */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-bg-light);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-txt-muted);
+  }
+}
+
+/* ── Utility classes ── */
+@layer utilities {
+  /* Corner radius variants */
+  .radius-sm { border-radius: 12px; }
+  .radius-md { border-radius: 16px; }
+  .radius-lg { border-radius: 20px; }
+  .radius-xl { border-radius: 24px; }
+  .radius-full { border-radius: 9999px; }
+
+  /* Focus ring — purple */
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-pri)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-deeper)];
+  }
+}
+
+/* ── Component classes ── */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 font-medium text-sm;
+    background: var(--color-pri);
+    color: white;
+    border-radius: 20px;
+    transition: all 0.15s ease;
+  }
+  .btn-primary:hover {
+    background: var(--color-pri-hover);
+  }
+  .btn-primary:active {
+    transform: scale(0.97);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2 font-medium text-sm;
+    color: var(--color-txt-secondary);
+    border-radius: 20px;
+    transition: all 0.15s ease;
+  }
+  .btn-ghost:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-txt);
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2 font-medium text-sm;
+    color: var(--color-danger);
+    border-radius: 20px;
+    transition: all 0.15s ease;
+  }
+  .btn-danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--color-danger-hover);
+  }
+
+  .btn-icon {
+    @apply inline-flex items-center justify-center;
+    width: 36px;
+    height: 36px;
+    border-radius: 20px;
+    color: var(--color-txt-secondary);
+    transition: all 0.15s ease;
+  }
+  .btn-icon:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-txt);
+  }
+
+  .surface {
+    background: var(--color-bg-dark);
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+  }
+
+  .surface-elevated {
+    background: var(--color-bg-mid);
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2.5 text-sm;
+    background: var(--color-bg-dark);
+    color: var(--color-txt);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    transition: all 0.15s ease;
+  }
+  .input-field::placeholder {
+    color: var(--color-txt-muted);
+  }
+  .input-field:focus {
+    outline: none;
+    border-color: var(--color-pri);
+    box-shadow: 0 0 0 3px var(--color-pri-muted);
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-bg-mid) 25%,
+      var(--color-bg-light) 50%,
+      var(--color-bg-mid) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 12px;
+  }
+}
+
+/* ── Animations ── */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
