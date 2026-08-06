@@ -14,6 +14,9 @@ export interface Server {
   id: string;
   name: string;
   icon?: string;
+  description?: string;
+  privacy?: "public" | "private";
+  memberCount?: number;
   ownerId: string;
   createdAt: Date | { toDate: () => Date };
   members?: string[];

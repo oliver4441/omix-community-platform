@@ -12,12 +12,18 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { BoardroomFeed } from "@/features/boardroom/BoardroomFeed";
 import { DeveloperProfile } from "@/features/profile/DeveloperProfile";
 import { SettingsPage } from "@/features/settings/SettingsPage";
+import { WorkspaceDiscovery } from "@/features/onboarding/WorkspaceDiscovery";
+import { Store } from "@/lib/store";
+import type { Server } from "@/lib/types";
 import type { AppView } from "@/lib/views";
 
 export function AppLayout() {
   const { user } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
   const [view, setView] = useState<AppView>("chat");
+  const [servers, setServers] = useState<Server[]>([]);
+  const [serversLoaded, setServersLoaded] = useState(false);
+  const [discoveryDismissed, setDiscoveryDismissed] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -25,6 +31,31 @@ export function AppLayout() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  // First-run onboarding: show workspace discovery while the user has no
+  // workspaces. Creating or joining one (realtime update) hides it again.
+  useEffect(() => {
+    const unsub = Store.subscribeServers((_, data) => {
+      setServers(data as Server[]);
+      setServersLoaded(true);
+    });
+    return () => void unsub();
+  }, []);
+
+  const showDiscovery =
+    !!user && serversLoaded && servers.length === 0 && !discoveryDismissed;
+
+  if (showDiscovery) {
+    return (
+      <WorkspaceDiscovery
+        displayName={user?.displayName || "User"}
+        onExplore={() => {
+          setDiscoveryDismissed(true);
+          setView("boards");
+        }}
+      />
+    );
+  }
 
   return (
     <div

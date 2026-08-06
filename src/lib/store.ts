@@ -53,6 +53,19 @@ function toDate(val: unknown): Date {
   return new Date(String(val));
 }
 
+function toServer(d: Record<string, unknown>): Server {
+  return {
+    id: d.id as string,
+    name: d.name as string,
+    icon: (d.icon as string) || "",
+    description: (d.description as string) || undefined,
+    privacy: (d.privacy as "public" | "private") || "private",
+    memberCount: (d.member_count as number) || 1,
+    ownerId: (d.created_by as string) || "",
+    createdAt: toDate(d.created_at),
+  };
+}
+
 function ablyToMessage(chat: AblyMessage): Message {
   const md = (chat.metadata || {}) as Record<string, unknown>;
   return {
@@ -315,13 +328,7 @@ export const Store = {
         async () => {
           const { data } = await supabase.from("servers").select("*").order("name");
           if (data) {
-            state.servers = data.map((d) => ({
-              id: d.id,
-              name: d.name,
-              icon: d.icon || "",
-              ownerId: d.created_by || "",
-              createdAt: toDate(d.created_at),
-            }));
+            state.servers = data.map((d) => toServer(d as Record<string, unknown>));
             notify("servers", state.servers);
             cb("servers", state.servers);
           }
@@ -353,12 +360,17 @@ export const Store = {
     return unsub;
   },
 
-  async createServer(name: string): Promise<string> {
-    if (!state.isAdmin) throw new Error("Only admins can create servers");
+  async createServer(
+    name: string,
+    opts: { description?: string; privacy?: "public" | "private" } = {}
+  ): Promise<string> {
+    // Any signed-in user may create a workspace (servers_anyone_insert policy).
     const { data, error } = await supabase
       .from("servers")
       .insert({
         name: name.trim(),
+        description: (opts.description || "").trim(),
+        privacy: opts.privacy || "private",
         icon: "",
         created_by: getSessionId(),
       })
@@ -375,10 +387,20 @@ export const Store = {
     await supabase.from("servers").delete().eq("id", serverId);
   },
 
-  async updateServer(serverId: string, data: { name?: string; icon?: string }): Promise<void> {
+  async updateServer(
+    serverId: string,
+    data: {
+      name?: string;
+      icon?: string;
+      description?: string;
+      privacy?: "public" | "private";
+    }
+  ): Promise<void> {
     const update: Record<string, unknown> = {};
     if (data.name !== undefined) update.name = data.name;
     if (data.icon !== undefined) update.icon = data.icon;
+    if (data.description !== undefined) update.description = data.description;
+    if (data.privacy !== undefined) update.privacy = data.privacy;
     await supabase.from("servers").update(update).eq("id", serverId);
   },
 
@@ -392,13 +414,18 @@ export const Store = {
   async getServer(serverId: string): Promise<Server | null> {
     const { data } = await supabase.from("servers").select("*").eq("id", serverId).single();
     if (!data) return null;
-    return {
-      id: data.id,
-      name: data.name,
-      icon: data.icon || "",
-      ownerId: data.created_by || "",
-      createdAt: toDate(data.created_at),
-    };
+    return toServer(data as Record<string, unknown>);
+  },
+
+  /** Public boardrooms for the workspace-discovery browse grid (stitch 20). */
+  async listPublicServers(): Promise<Server[]> {
+    const { data } = await supabase
+      .from("servers")
+      .select("*")
+      .eq("privacy", "public")
+      .order("name");
+    if (!data) return [];
+    return data.map((d) => toServer(d as Record<string, unknown>));
   },
 
   // === INVITES ===
