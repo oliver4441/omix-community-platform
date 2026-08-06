@@ -1,7 +1,7 @@
 "use client";
 
 import { X, Search } from "@/components/ui/icons";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Store } from "@/lib/store";
 
 interface SearchModalProps {
@@ -10,20 +10,16 @@ interface SearchModalProps {
 
 export function SearchModal({ onClose }: SearchModalProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<{ id: string; text: string; author: string; channelName: string }[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
+  const results = useMemo(() => {
+    if (!query.trim()) return [];
     const q = query.toLowerCase();
-    const filtered = Store.messages
+    return Store.messages
       .filter((m) => m.text.toLowerCase().includes(q))
       .slice(0, 20)
       .map((m) => ({
@@ -32,7 +28,6 @@ export function SearchModal({ onClose }: SearchModalProps) {
         author: m.author,
         channelName: Store.channels.find((c) => c.id === m.channelId)?.name || "Unknown",
       }));
-    setResults(filtered);
   }, [query]);
 
   return (

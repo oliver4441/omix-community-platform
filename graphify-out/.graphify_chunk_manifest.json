@@ -1,0 +1,26 @@
+{
+  "chunk_01": [
+    "/home/oliver/Desktop/community/firebase.json",
+    "/home/oliver/Desktop/community/package.json",
+    "/home/oliver/Desktop/community/tsconfig.json",
+    "/home/oliver/Desktop/community/vercel.json",
+    "/home/oliver/Desktop/community/public/manifest.json",
+    "/home/oliver/Desktop/community/docs/CONSTITUTION.md",
+    "/home/oliver/Desktop/community/docs/DEPLOY.md",
+    "/home/oliver/Desktop/community/docs/DEPLOYMENT_READINESS.md",
+    "/home/oliver/Desktop/community/docs/FIREBASE_AUTH.md",
+    "/home/oliver/Desktop/community/docs/FIREBASE_DEPLOY.md",
+    "/home/oliver/Desktop/community/docs/FIREBASE_DEPLOYMENT_STATUS.md",
+    "/home/oliver/Desktop/community/docs/MIGRATION_PLAN.md",
+    "/home/oliver/Desktop/community/docs/NEXT_BUILD_TROUBLESHOOTING.md",
+    "/home/oliver/Desktop/community/docs/QUICK_MIGRATION_PLAN.md",
+    "/home/oliver/Desktop/community/docs/README.md"
+  ],
+  "chunk_02": [
+    "/home/oliver/Desktop/community/public/logo-192-maskable.png",
+    "/home/oliver/Desktop/community/public/logo-192.png",
+    "/home/oliver/Desktop/community/public/logo-512-maskable.png",
+    "/home/oliver/Desktop/community/public/logo-512.png",
+    "/home/oliver/Desktop/community/public/logo.jpg"
+  ]
+}

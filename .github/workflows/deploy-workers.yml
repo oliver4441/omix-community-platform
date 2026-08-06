@@ -1,0 +1,81 @@
+name: Deploy Cloudflare Workers
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "workers/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/deploy-workers.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: workers-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck workers
+        run: npm run workers:typecheck
+
+      - name: Verify required secrets are set
+        shell: bash
+        run: |
+          set -e
+          for s in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID ABLY_API_KEY SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+            eval "value=\${$s}"
+            [ -n "$value" ] || { echo "::error::Required secret $s is not set"; exit 1; }
+          done
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ABLY_API_KEY: ${{ secrets.ABLY_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      # Deploy first so the worker scripts exist, then attach secrets
+      # (secret put on an existing worker triggers a redeploy with the value).
+      - name: Deploy omix-api
+        run: npx wrangler deploy --config workers/omix-api/wrangler.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy omix-cron
+        run: npx wrangler deploy --config workers/omix-cron/wrangler.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Set omix-api secrets
+        run: |
+          echo "${{ secrets.ABLY_API_KEY }}" | npx wrangler secret put ABLY_API_KEY --config workers/omix-api/wrangler.toml
+          echo "${{ secrets.SUPABASE_URL }}" | npx wrangler secret put SUPABASE_URL --config workers/omix-api/wrangler.toml
+          echo "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" | npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config workers/omix-api/wrangler.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Set omix-cron secrets
+        run: |
+          echo "${{ secrets.SUPABASE_URL }}" | npx wrangler secret put SUPABASE_URL --config workers/omix-cron/wrangler.toml
+          echo "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" | npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config workers/omix-cron/wrangler.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

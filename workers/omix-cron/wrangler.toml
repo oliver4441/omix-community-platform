@@ -1,0 +1,11 @@
+name = "omix-cron"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# Runs every 5 minutes
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Secrets (wrangler secret put):
+#   SUPABASE_URL
+#   SUPABASE_SERVICE_ROLE_KEY

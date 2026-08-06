@@ -1,10 +1,16 @@
 "use client";
 
+// Mutating the global Store singleton (src/lib/store.ts) from event handlers is
+// this app's established state pattern (Store + window events). The React
+// Compiler immutability rule doesn't apply to this architecture.
+/* eslint-disable react-hooks/immutability */
+
 import { useState, useEffect, useRef } from "react";
 import { Store } from "@/lib/store";
 import type { DMChannel, User } from "@/lib/types";
-import { MessageSquare, Plus, Search, X } from "@/components/ui/icons";
+import { MessageSquare, Plus, Search, X, History } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/Toast";
+import { RecentCallsModal } from "./RecentCallsModal";
 
 export function DMSidebar({
   isMobile,
@@ -21,6 +27,7 @@ export function DMSidebar({
   const [dmChannelsLoaded, setDmChannelsLoaded] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
   const [showNewDM, setShowNewDM] = useState(false);
+  const [showRecentCalls, setShowRecentCalls] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const unreadInterval = useRef<ReturnType<typeof setInterval>>(undefined);
   const { toast } = useToast();
@@ -85,6 +92,16 @@ export function DMSidebar({
     (u) => u.id !== Store.sessionId
   );
 
+  const openPartnerFromCall = async (userId: string) => {
+    try {
+      const dmId = await Store.createOrGetDMChannel(userId);
+      setShowRecentCalls(false);
+      selectDM({ id: dmId } as DMChannel);
+    } catch {
+      toast("Could not open a conversation", "error");
+    }
+  };
+
   if (isMobile && currentView !== "dms") return null;
 
   return (
@@ -103,6 +120,17 @@ export function DMSidebar({
         <span className="font-semibold text-sm text-[var(--color-txt)] truncate">
           Direct Messages
         </span>
+        <button
+          onClick={() => setShowRecentCalls(true)}
+          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors ml-auto"
+          aria-label="Recent calls"
+          title="Recent calls"
+        >
+          <History
+            size={16}
+            className="text-[var(--color-txt-muted)] hover:text-[var(--color-txt)] transition-colors"
+          />
+        </button>
       </div>
 
       {/* Search + New DM */}
@@ -152,7 +180,7 @@ export function DMSidebar({
               className="text-[var(--color-txt-muted)] mb-3 opacity-40"
             />
             <p className="text-sm text-[var(--color-txt-muted)]">
-              No DMs matching "{searchQuery}"
+              No DMs matching &ldquo;{searchQuery}&rdquo;
             </p>
             <button
               onClick={() => setSearchQuery("")}
@@ -171,7 +199,7 @@ export function DMSidebar({
               No direct messages yet
             </p>
             <p className="text-xs text-[var(--color-txt-muted)] mt-1 opacity-70">
-              Click "New Message" to start a conversation
+              Click &ldquo;New Message&rdquo; to start a conversation
             </p>
             <button
               onClick={() => setShowNewDM(true)}
@@ -270,6 +298,14 @@ export function DMSidebar({
           </div>
         )}
       </div>
+
+      {/* Recent calls modal */}
+      {showRecentCalls && (
+        <RecentCallsModal
+          onClose={() => setShowRecentCalls(false)}
+          onOpenPartner={openPartnerFromCall}
+        />
+      )}
 
       {/* New DM Modal */}
       {showNewDM && (

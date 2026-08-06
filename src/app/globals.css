@@ -1,58 +1,171 @@
 @import "tailwindcss";
 
-/* ═══════════════════════════════════════
-   OS (Omix Social) — Design System
-   Dark-first · Purple · 20px corners · 8pt grid
-   ═══════════════════════════════════════ */
+/* ════════════════════════════════════════════════
+   Omix Community — Design System
+   "Developer Dark" · Electric Violet + Cyber Teal
+   Compact radius · Glassmorphic surfaces · Mono labels
+   ════════════════════════════════════════════════ */
 
 @theme inline {
   /* ── Fonts ── */
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
+  --font-display: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-code: var(--font-jetbrains), ui-monospace, monospace;
 
-  /* ── Primary (Purple) ── */
-  --color-pri: #8B5CF6;
-  --color-pri-hover: #A78BFA;
-  --color-pri-muted: rgba(139, 92, 246, 0.15);
-  --color-pri-glow: rgba(139, 92, 246, 0.3);
+  --font-display-lg: var(--font-hanken);
+  --font-headline-md: var(--font-hanken);
+  --font-headline-sm: var(--font-hanken);
+  --font-body-lg: var(--font-inter);
+  --font-body-md: var(--font-inter);
+  --font-body-sm: var(--font-inter);
+  --font-code-md: var(--font-jetbrains);
+  --font-label-caps: var(--font-jetbrains);
 
-  /* ── Accent (Blue) ── */
-  --color-acc: #3B82F6;
-  --color-acc-hover: #60A5FA;
-  --color-acc-muted: rgba(59, 130, 246, 0.15);
+  /* ── Type scale ── */
+  --text-display-lg: 48px;
+  --text-display-lg--line-height: 56px;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-lg--font-weight: 700;
 
-  /* ── Backgrounds (Very dark navy) ── */
-  --color-bg-deepest: #070B14;
-  --color-bg-deeper: #0B1120;
-  --color-bg-dark: #0F172A;
-  --color-bg-mid: #1E293B;
-  --color-bg-light: #334155;
+  --text-headline-md: 32px;
+  --text-headline-md--line-height: 40px;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 600;
+
+  --text-headline-sm: 24px;
+  --text-headline-sm--line-height: 32px;
+  --text-headline-sm--font-weight: 600;
+
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 28px;
+
+  --text-body-md: 16px;
+  --text-body-md--line-height: 24px;
+
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 20px;
+
+  --text-code-md: 14px;
+  --text-code-md--line-height: 22px;
+
+  --text-label-caps: 12px;
+  --text-label-caps--line-height: 16px;
+  --text-label-caps--letter-spacing: 0.05em;
+  --text-label-caps--font-weight: 600;
+
+  /* ── M3 Core palette (Omix Community) ── */
+  --color-primary: #d0bcff;
+  --color-on-primary: #3c0091;
+  --color-primary-container: #a078ff;
+  --color-on-primary-container: #340080;
+  --color-inverse-primary: #6d3bd7;
+  --color-primary-fixed: #e9ddff;
+  --color-primary-fixed-dim: #d0bcff;
+  --color-on-primary-fixed: #23005c;
+  --color-on-primary-fixed-variant: #5516be;
+
+  --color-secondary: #4fdbc8;
+  --color-on-secondary: #003731;
+  --color-secondary-container: #04b4a2;
+  --color-on-secondary-container: #003f38;
+  --color-secondary-fixed: #71f8e4;
+  --color-secondary-fixed-dim: #4fdbc8;
+  --color-on-secondary-fixed: #00201c;
+  --color-on-secondary-fixed-variant: #005048;
+
+  --color-tertiary: #ffafd3;
+  --color-on-tertiary: #620040;
+  --color-tertiary-container: #e364a7;
+  --color-on-tertiary-container: #560038;
+  --color-tertiary-fixed: #ffd8e7;
+  --color-tertiary-fixed-dim: #ffafd3;
+  --color-on-tertiary-fixed: #3d0026;
+  --color-on-tertiary-fixed-variant: #85145a;
+
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+
+  --color-background: #0b1326;
+  --color-on-background: #dae2fd;
+  --color-surface: #0b1326;
+  --color-surface-dim: #0b1326;
+  --color-surface-bright: #31394d;
+  --color-on-surface: #dae2fd;
+  --color-surface-variant: #2d3449;
+  --color-on-surface-variant: #cbc3d7;
+  --color-surface-container-lowest: #060e20;
+  --color-surface-container-low: #131b2e;
+  --color-surface-container: #171f33;
+  --color-surface-container-high: #222a3d;
+  --color-surface-container-highest: #2d3449;
+  --color-surface-tint: #d0bcff;
+  --color-inverse-surface: #dae2fd;
+  --color-inverse-on-surface: #283044;
+  --color-outline: #958ea0;
+  --color-outline-variant: #494454;
+
+  /* ── Legacy semantic aliases (remapped to Omix) ── */
+  --color-pri: #d0bcff;
+  --color-pri-hover: #e9ddff;
+  --color-pri-muted: rgba(208, 188, 255, 0.15);
+  --color-pri-glow: rgba(208, 188, 255, 0.3);
+
+  --color-acc: #4fdbc8;
+  --color-acc-hover: #71f8e4;
+  --color-acc-muted: rgba(79, 219, 200, 0.15);
+
+  --color-bg-deepest: #060e20;
+  --color-bg-deeper: #0b1326;
+  --color-bg-dark: #131b2e;
+  --color-bg-mid: #171f33;
+  --color-bg-light: #2d3449;
   --color-bg-hover: rgba(255, 255, 255, 0.05);
   --color-bg-active: rgba(255, 255, 255, 0.08);
-  --color-bg-overlay: rgba(7, 11, 20, 0.8);
+  --color-bg-overlay: rgba(6, 14, 32, 0.85);
 
-  /* ── Text ── */
-  --color-txt: #F1F5F9;
-  --color-txt-secondary: #94A3B8;
-  --color-txt-muted: #64748B;
-  --color-txt-inverse: #0F172A;
+  --color-txt: #dae2fd;
+  --color-txt-secondary: #cbc3d7;
+  --color-txt-muted: #958ea0;
+  --color-txt-inverse: #283044;
 
   /* ── Status ── */
-  --color-online: #22C55E;
-  --color-idle: #F59E0B;
-  --color-dnd: #EF4444;
-  --color-offline: #475569;
+  --color-online: #4fdbc8;
+  --color-idle: #f59e0b;
+  --color-dnd: #ffb4ab;
+  --color-offline: #494454;
 
   /* ── Borders ── */
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-border-hover: rgba(255, 255, 255, 0.12);
-  --color-border-light: rgba(255, 255, 255, 0.04);
+  --color-border: rgba(73, 68, 84, 0.45);
+  --color-border-hover: rgba(149, 142, 160, 0.55);
+  --color-border-light: rgba(73, 68, 84, 0.25);
 
   /* ── Misc ── */
-  --color-danger: #EF4444;
-  --color-danger-hover: #F87171;
-  --color-success: #22C55E;
-  --color-warning: #F59E0B;
+  --color-danger: #ffb4ab;
+  --color-danger-hover: #ffdad6;
+  --color-success: #4fdbc8;
+  --color-warning: #f59e0b;
+}
+
+/* ── Material Symbols ── */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "liga";
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
 }
 
 /* ── Base styles ── */
@@ -65,13 +178,13 @@
 
   html {
     height: 100%;
-    background-color: var(--color-bg-deeper);
+    background-color: var(--color-background);
   }
 
   body {
     min-height: 100%;
-    background: var(--color-bg-deeper);
-    color: var(--color-txt);
+    background: var(--color-background);
+    color: var(--color-on-surface);
     font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -79,62 +192,86 @@
   }
 
   ::selection {
-    background-color: var(--color-pri);
-    color: white;
+    background-color: var(--color-primary-container);
+    color: var(--color-on-primary-container);
   }
 
   /* Scrollbar — thin, dark */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-bg-light);
-    border-radius: 3px;
+    background: var(--color-outline-variant);
+    border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-txt-muted);
+    background: var(--color-outline);
   }
 }
 
 /* ── Utility classes ── */
 @layer utilities {
-  /* Corner radius variants */
-  .radius-sm { border-radius: 12px; }
-  .radius-md { border-radius: 16px; }
-  .radius-lg { border-radius: 20px; }
-  .radius-xl { border-radius: 24px; }
+  .radius-sm { border-radius: 4px; }
+  .radius-md { border-radius: 8px; }
+  .radius-lg { border-radius: 12px; }
+  .radius-xl { border-radius: 16px; }
   .radius-full { border-radius: 9999px; }
 
-  /* Focus ring — purple */
+  .glass-panel {
+    background: rgba(30, 41, 59, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .code-block-bg {
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Focus ring — Electric Violet */
   .focus-ring {
-    @apply outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-pri)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-deeper)];
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)];
   }
 }
 
 /* ── Component classes ── */
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 font-medium text-sm;
-    background: var(--color-pri);
-    color: white;
-    border-radius: 20px;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 font-label-caps text-label-caps font-semibold uppercase;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    border-radius: 4px;
+    box-shadow: 0 0 15px rgba(208, 188, 255, 0.25);
     transition: all 0.15s ease;
   }
   .btn-primary:hover {
-    background: var(--color-pri-hover);
+    background: var(--color-primary-fixed);
   }
   .btn-primary:active {
     transform: scale(0.97);
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-3 py-2 font-medium text-sm;
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2 font-label-caps text-label-caps uppercase;
     color: var(--color-txt-secondary);
-    border-radius: 20px;
+    border: 1px solid var(--color-secondary);
+    border-radius: 4px;
     transition: all 0.15s ease;
   }
   .btn-ghost:hover {
@@ -143,21 +280,21 @@
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 px-3 py-2 font-medium text-sm;
-    color: var(--color-danger);
-    border-radius: 20px;
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2 font-label-caps text-label-caps uppercase;
+    color: var(--color-error);
+    border-radius: 4px;
     transition: all 0.15s ease;
   }
   .btn-danger:hover {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--color-danger-hover);
+    background: rgba(255, 180, 171, 0.12);
+    color: var(--color-error-container);
   }
 
   .btn-icon {
     @apply inline-flex items-center justify-center;
     width: 36px;
     height: 36px;
-    border-radius: 20px;
+    border-radius: 8px;
     color: var(--color-txt-secondary);
     transition: all 0.15s ease;
   }
@@ -167,24 +304,24 @@
   }
 
   .surface {
-    background: var(--color-bg-dark);
-    border-radius: 20px;
-    border: 1px solid var(--color-border);
+    background: var(--color-surface-container);
+    border-radius: 8px;
+    border: 1px solid var(--color-outline-variant);
   }
 
   .surface-elevated {
-    background: var(--color-bg-mid);
-    border-radius: 20px;
-    border: 1px solid var(--color-border);
+    background: var(--color-surface-container-high);
+    border-radius: 8px;
+    border: 1px solid var(--color-outline-variant);
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   }
 
   .input-field {
-    @apply w-full px-4 py-2.5 text-sm;
-    background: var(--color-bg-dark);
-    color: var(--color-txt);
-    border: 1px solid var(--color-border);
-    border-radius: 20px;
+    @apply w-full px-4 py-2.5 text-body-sm font-body-sm;
+    background: var(--color-surface-container-low);
+    color: var(--color-on-surface);
+    border: 1px solid var(--color-outline-variant);
+    border-radius: 4px;
     transition: all 0.15s ease;
   }
   .input-field::placeholder {
@@ -192,20 +329,20 @@
   }
   .input-field:focus {
     outline: none;
-    border-color: var(--color-pri);
-    box-shadow: 0 0 0 3px var(--color-pri-muted);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 1px rgba(208, 188, 255, 0.5);
   }
 
   .skeleton {
     background: linear-gradient(
       90deg,
-      var(--color-bg-mid) 25%,
-      var(--color-bg-light) 50%,
-      var(--color-bg-mid) 75%
+      var(--color-surface-container) 25%,
+      var(--color-surface-container-highest) 50%,
+      var(--color-surface-container) 75%
     );
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
-    border-radius: 12px;
+    border-radius: 8px;
   }
 }
 

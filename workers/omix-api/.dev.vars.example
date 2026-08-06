@@ -1,0 +1,7 @@
+# Copy this file to .dev.vars (git-ignored) and fill in real values for local dev.
+ABLY_API_KEY=your_ably_api_key
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+CORS_ORIGIN=*
+# Optional: if set, /ably/token requires `Authorization: Bearer <value>`.
+TOKEN_AUTH_SECRET=

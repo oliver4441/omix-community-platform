@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated / committed artifacts that aren't source:
+    "dist/**",
+    "graphify-out/**",
   ]),
 ]);
 

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Omix - Workspace Discovery</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&amp;family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#0b1326",
+                        "on-primary-fixed-variant": "#5516be",
+                        "on-secondary": "#003731",
+                        "surface-container-highest": "#2d3449",
+                        "surface-container": "#171f33",
+                        "secondary-container": "#04b4a2",
+                        "surface-container-low": "#131b2e",
+                        "on-tertiary": "#620040",
+                        "surface-tint": "#d0bcff",
+                        "surface-container-high": "#222a3d",
+                        "on-secondary-fixed-variant": "#005048",
+                        "secondary-fixed": "#71f8e4",
+                        "outline": "#958ea0",
+                        "primary-fixed": "#e9ddff",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-container": "#e364a7",
+                        "inverse-surface": "#dae2fd",
+                        "tertiary": "#ffafd3",
+                        "outline-variant": "#494454",
+                        "on-tertiary-fixed-variant": "#85145a",
+                        "on-primary-container": "#340080",
+                        "background": "#0b1326",
+                        "secondary": "#4fdbc8",
+                        "error-container": "#93000a",
+                        "on-primary-fixed": "#23005c",
+                        "surface-bright": "#31394d",
+                        "primary-fixed-dim": "#d0bcff",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "on-surface": "#dae2fd",
+                        "primary": "#d0bcff",
+                        "surface-container-lowest": "#060e20",
+                        "on-secondary-fixed": "#00201c",
+                        "on-tertiary-container": "#560038",
+                        "surface-variant": "#2d3449",
+                        "on-secondary-container": "#003f38",
+                        "inverse-primary": "#6d3bd7",
+                        "tertiary-fixed": "#ffd8e7",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "surface-dim": "#0b1326",
+                        "on-primary": "#3c0091",
+                        "primary-container": "#a078ff",
+                        "on-tertiary-fixed": "#3d0026",
+                        "tertiary-fixed-dim": "#ffafd3",
+                        "on-background": "#dae2fd",
+                        "inverse-on-surface": "#283044",
+                        "on-surface-variant": "#cbc3d7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "gutter": "16px",
+                        "xl": "40px",
+                        "base": "4px",
+                        "sidebar_width": "280px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "code-md": ["JetBrains Mono"],
+                        "body-sm": ["Inter"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "label-caps": ["JetBrains Mono"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "code-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .input-glow:focus {
+            box-shadow: 0 0 0 1px theme('colors.primary');
+            border-color: theme('colors.primary');
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-body-md overflow-x-hidden relative">
+<!-- TopNavBar (Translational/Bridge Screen - Navigation Suppressed as per rules, but a simplified header for brand anchor is used) -->
+<header class="absolute top-0 w-full flex justify-between items-center px-xl py-lg w-full max-w-7xl mx-auto z-50">
+<div class="font-headline-md text-headline-md font-black text-primary">Omix</div>
+<button class="text-on-surface-variant hover:opacity-80 transition-opacity font-body-md text-body-md">Support</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-grow flex items-center justify-center p-md relative z-10 pt-32 pb-24">
+<div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-lg relative">
+<!-- Left Panel: Create Workspace -->
+<div class="glass-panel rounded-xl p-xl flex flex-col justify-between h-full relative overflow-hidden group">
+<!-- Decorative background accent -->
+<div class="absolute -top-32 -left-32 w-64 h-64 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all duration-500"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-sm mb-lg">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">add_box</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Create a New Workspace</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-xl">
+                        Establish a new command center for your team or project. Configure access, channels, and integrations.
+                    </p>
+<form class="space-y-lg">
+<div>
+<label class="block font-label-caps text-label-caps text-outline mb-sm uppercase" for="workspace-name">Workspace Name</label>
+<input class="w-full bg-surface-container-highest border border-outline-variant rounded-DEFAULT px-md py-sm text-on-surface placeholder:text-on-surface-variant/50 input-glow outline-none transition-shadow font-body-md text-body-md" id="workspace-name" placeholder="e.g., Engineering Alpha" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-outline mb-sm uppercase">Workspace Icon</label>
+<div class="flex items-center gap-md">
+<div class="w-16 h-16 rounded-lg bg-surface-container-highest border border-outline-variant border-dashed flex items-center justify-center text-on-surface-variant hover:text-primary hover:border-primary transition-colors cursor-pointer">
+<span class="material-symbols-outlined">upload</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">
+                                    Upload a square image<br/>
+<span class="text-outline text-xs">PNG or JPG, max 2MB</span>
+</div>
+</div>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-outline mb-sm uppercase">Privacy Level</label>
+<div class="grid grid-cols-2 gap-sm">
+<label class="cursor-pointer">
+<input checked="" class="peer sr-only" name="privacy" type="radio"/>
+<div class="p-sm border border-primary bg-primary/10 rounded-lg peer-checked:border-primary peer-checked:bg-primary/20 transition-colors text-center">
+<span class="material-symbols-outlined block mb-xs text-primary text-xl">lock</span>
+<span class="font-body-sm text-body-sm text-on-surface block">Private</span>
+</div>
+</label>
+<label class="cursor-pointer">
+<input class="peer sr-only" name="privacy" type="radio"/>
+<div class="p-sm border border-outline-variant bg-surface-container-highest rounded-lg peer-checked:border-primary peer-checked:bg-primary/20 transition-colors text-center hover:bg-surface-container">
+<span class="material-symbols-outlined block mb-xs text-on-surface-variant text-xl">public</span>
+<span class="font-body-sm text-body-sm text-on-surface block">Public</span>
+</div>
+</label>
+</div>
+</div>
+</form>
+</div>
+<div class="mt-xl relative z-10 pt-lg border-t border-outline-variant">
+<button class="w-full bg-[#5516be] hover:bg-[#6d3bd7] text-white font-body-md text-body-md py-sm px-lg rounded-DEFAULT transition-colors flex justify-center items-center gap-sm font-medium">
+                        Initialize Workspace
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Right Panel: Browse Boardrooms -->
+<div class="glass-panel rounded-xl p-xl flex flex-col relative overflow-hidden group">
+<!-- Decorative background accent -->
+<div class="absolute -bottom-32 -right-32 w-64 h-64 bg-secondary/10 rounded-full blur-3xl group-hover:bg-secondary/20 transition-all duration-500"></div>
+<div class="relative z-10 mb-lg">
+<div class="flex items-center gap-sm mb-lg">
+<span class="material-symbols-outlined text-secondary text-3xl" style="font-variation-settings: 'FILL' 1;">explore</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Browse Public Boardrooms</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md">
+                        Discover open communities, technical forums, and public project spaces across the network.
+                    </p>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container border border-outline-variant rounded-DEFAULT pl-10 pr-md py-sm text-on-surface placeholder:text-on-surface-variant/50 input-glow outline-none transition-shadow font-body-sm text-body-sm" placeholder="Search by tags or keywords..." type="text"/>
+</div>
+</div>
+<!-- Bento Grid for Boardrooms -->
+<div class="relative z-10 flex-grow grid grid-cols-1 sm:grid-cols-2 gap-sm overflow-y-auto pr-sm custom-scrollbar" style="max-height: 400px;">
+<!-- Card 1 -->
+<div class="bg-surface-container-low border border-outline-variant rounded-lg p-md hover:border-secondary/50 transition-colors cursor-pointer group/card flex flex-col justify-between">
+<div>
+<div class="flex items-start justify-between mb-sm">
+<div class="w-10 h-10 rounded-DEFAULT bg-primary/20 flex items-center justify-center text-primary font-headline-sm text-headline-sm">FE</div>
+<span class="material-symbols-outlined text-outline-variant group-hover/card:text-secondary transition-colors text-sm">arrow_outward</span>
+</div>
+<h3 class="font-body-md text-body-md text-on-surface font-medium mb-xs">Frontend Masters</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">React, Vue, and performance optimization discussions.</p>
+</div>
+<div class="mt-md flex items-center gap-xs text-outline font-code-md text-code-md text-xs">
+<span class="material-symbols-outlined text-[14px]">group</span> 1.2k
+                        </div>
+</div>
+<!-- Card 2 (Featured) -->
+<div class="bg-gradient-to-br from-surface-container to-surface-container-highest border border-secondary/30 rounded-lg p-md hover:border-secondary transition-colors cursor-pointer group/card sm:col-span-2 flex flex-col sm:flex-row gap-md items-center justify-between">
+<div class="flex-grow">
+<div class="flex items-center gap-sm mb-xs">
+<div class="w-8 h-8 rounded-DEFAULT bg-secondary/20 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">terminal</span>
+</div>
+<h3 class="font-body-md text-body-md text-on-surface font-medium">Core Architecture</h3>
+<span class="bg-secondary/10 text-secondary border border-secondary/20 rounded-full px-2 py-0.5 text-[10px] font-label-caps uppercase ml-auto sm:ml-0">Official</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">System design patterns and microservices architecture reviews. High signal-to-noise ratio.</p>
+</div>
+<button class="shrink-0 border border-secondary text-secondary hover:bg-secondary/10 font-body-sm text-body-sm py-1.5 px-sm rounded-DEFAULT transition-colors whitespace-nowrap">
+                            Join Boardroom
+                        </button>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-low border border-outline-variant rounded-lg p-md hover:border-secondary/50 transition-colors cursor-pointer group/card flex flex-col justify-between">
+<div>
+<div class="flex items-start justify-between mb-sm">
+<div class="w-10 h-10 rounded-DEFAULT bg-tertiary/20 flex items-center justify-center text-tertiary font-headline-sm text-headline-sm">UX</div>
+<span class="material-symbols-outlined text-outline-variant group-hover/card:text-secondary transition-colors text-sm">arrow_outward</span>
+</div>
+<h3 class="font-body-md text-body-md text-on-surface font-medium mb-xs">Design Systems</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Tokens, components, and tooling.</p>
+</div>
+<div class="mt-md flex items-center gap-xs text-outline font-code-md text-code-md text-xs">
+<span class="material-symbols-outlined text-[14px]">group</span> 850
+                        </div>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-low border border-outline-variant rounded-lg p-md hover:border-secondary/50 transition-colors cursor-pointer group/card flex flex-col justify-between">
+<div>
+<div class="flex items-start justify-between mb-sm">
+<div class="w-10 h-10 rounded-DEFAULT bg-[#04b4a2]/20 flex items-center justify-center text-[#04b4a2] font-headline-sm text-headline-sm">OP</div>
+<span class="material-symbols-outlined text-outline-variant group-hover/card:text-secondary transition-colors text-sm">arrow_outward</span>
+</div>
+<h3 class="font-body-md text-body-md text-on-surface font-medium mb-xs">DevOps Alpha</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">CI/CD pipelines, k8s, and cloud native infra.</p>
+</div>
+<div class="mt-md flex items-center gap-xs text-outline font-code-md text-code-md text-xs">
+<span class="material-symbols-outlined text-[14px]">group</span> 3.1k
+                        </div>
+</div>
+</div>
+<div class="mt-md relative z-10 pt-md text-center">
+<a class="font-body-sm text-body-sm text-secondary hover:text-secondary-fixed transition-colors underline-offset-4 hover:underline" href="#">View All Public Directories</a>
+</div>
+</div>
+</div>
+</main>
+<style>
+        /* Custom scrollbar for bento grid */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: theme('colors.outline-variant');
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.outline');
+        }
+    </style>
+</body></html>

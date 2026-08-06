@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Omix Community - Boards</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-highest": "#2d3449",
+                        "on-primary": "#3c0091",
+                        "error": "#ffb4ab",
+                        "on-surface-variant": "#cbc3d7",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "surface-container-high": "#222a3d",
+                        "on-primary-fixed": "#23005c",
+                        "primary": "#d0bcff",
+                        "primary-container": "#a078ff",
+                        "surface-container-low": "#131b2e",
+                        "surface-container-lowest": "#060e20",
+                        "secondary": "#4fdbc8",
+                        "on-primary-container": "#340080",
+                        "on-tertiary": "#620040",
+                        "primary-fixed-dim": "#d0bcff",
+                        "secondary-fixed": "#71f8e4",
+                        "tertiary": "#ffafd3",
+                        "on-secondary-fixed": "#00201c",
+                        "surface-tint": "#d0bcff",
+                        "tertiary-fixed": "#ffd8e7",
+                        "outline-variant": "#494454",
+                        "on-tertiary-fixed-variant": "#85145a",
+                        "on-primary-fixed-variant": "#5516be",
+                        "on-error-container": "#ffdad6",
+                        "surface": "#0b1326",
+                        "on-tertiary-fixed": "#3d0026",
+                        "inverse-on-surface": "#283044",
+                        "inverse-primary": "#6d3bd7",
+                        "on-secondary-container": "#003f38",
+                        "background": "#0b1326",
+                        "surface-container": "#171f33",
+                        "inverse-surface": "#dae2fd",
+                        "surface-dim": "#0b1326",
+                        "on-tertiary-container": "#560038",
+                        "surface-bright": "#31394d",
+                        "on-surface": "#dae2fd",
+                        "on-secondary": "#003731",
+                        "error-container": "#93000a",
+                        "tertiary-container": "#e364a7",
+                        "tertiary-fixed-dim": "#ffafd3",
+                        "on-background": "#dae2fd",
+                        "on-error": "#690005",
+                        "surface-variant": "#2d3449",
+                        "primary-fixed": "#e9ddff",
+                        "on-secondary-fixed-variant": "#005048",
+                        "outline": "#958ea0",
+                        "secondary-container": "#04b4a2"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "base": "4px",
+                        "lg": "24px",
+                        "sidebar_width": "280px",
+                        "gutter": "16px",
+                        "sm": "8px",
+                        "xl": "40px",
+                        "xs": "4px",
+                        "md": "16px"
+                    },
+                    fontFamily: {
+                        "display-lg": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "code-md": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["JetBrains Mono"],
+                        "body-md": ["Inter"]
+                    },
+                    fontSize: {
+                        "display-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "headline-sm": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "headline-md": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "code-md": ["14px", { lineHeight: "22px", fontWeight: "400" }],
+                        "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
+                        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "label-caps": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .vote-btn:active {
+            transform: scale(0.9);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md overflow-x-hidden pt-16 pb-[80px]">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-md h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant bg-surface-container-high flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="A futuristic geometric logo for a developer community workspace, featuring sharp neon purple and cyan lines on a deep black background. High contrast, precise vectors, modern technical aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKxt6kDh1B_HBMM4Yr54yvhsOyxGPZ3qdGTCXiJUzEyz90jMekKyNkYptnp88hBakf0G44H2PyyHn1jlASNs0gTttQv03Af4cHUvAayYek7oynHgc6Rf8bXu692MOqvWfjKazx2C7JOsReO6LJQijQxibVoX0hge0Go-Lypt1aDQRiVxA6bTv-wRFlQ4gr7dlxGKVJRD83ZoBcM4x-IHeYZCxZcXX0n_uCv8K0XC0FnbS-RgKRswhi-A"/>
+</div>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary">Omix Community</h1>
+</div>
+<button aria-label="More options" class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-3xl mx-auto p-sm gap-sm flex flex-col">
+<!-- Board Categories/Filters -->
+<div class="flex gap-sm overflow-x-auto pb-sm no-scrollbar mt-sm snap-x">
+<button class="snap-start flex-none px-md py-sm rounded-full bg-primary-container text-on-primary-container font-label-caps text-label-caps border border-primary whitespace-nowrap">All Discussions</button>
+<button class="snap-start flex-none px-md py-sm rounded-full bg-surface-container text-on-surface-variant font-label-caps text-label-caps border border-outline-variant hover:bg-surface-container-high transition-colors whitespace-nowrap">#Announcements</button>
+<button class="snap-start flex-none px-md py-sm rounded-full bg-surface-container text-on-surface-variant font-label-caps text-label-caps border border-outline-variant hover:bg-surface-container-high transition-colors whitespace-nowrap">#RFCs</button>
+<button class="snap-start flex-none px-md py-sm rounded-full bg-surface-container text-on-surface-variant font-label-caps text-label-caps border border-outline-variant hover:bg-surface-container-high transition-colors whitespace-nowrap">#Bugs</button>
+</div>
+<!-- Integrated Boardroom Card (Pinned/High Priority) -->
+<article class="glass-panel rounded-xl p-md flex flex-col gap-sm relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full bg-secondary"></div>
+<div class="absolute inset-0 bg-gradient-to-br from-secondary/10 to-transparent pointer-events-none"></div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="push_pin" data-weight="fill" style="font-variation-settings: 'FILL' 1;">push_pin</span>
+<span class="font-code-md text-code-md text-secondary">#Announcements</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">2h ago</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface leading-tight">v2.4 Core Architecture Migration Plan</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+                We are beginning the phased rollout of the new state management engine. Please review the attached RFC and ensure all local environments are updated to node v20+.
+            </p>
+<div class="flex items-center justify-between mt-sm">
+<div class="flex items-center gap-md">
+<div class="flex items-center gap-xs text-on-surface-variant">
+<button class="vote-btn hover:text-primary transition-colors flex items-center justify-center w-8 h-8 rounded-full hover:bg-surface-container-high"><span class="material-symbols-outlined text-lg" data-icon="keyboard_arrow_up">keyboard_arrow_up</span></button>
+<span class="font-code-md text-code-md font-bold text-on-surface">342</span>
+<button class="vote-btn hover:text-error transition-colors flex items-center justify-center w-8 h-8 rounded-full hover:bg-surface-container-high"><span class="material-symbols-outlined text-lg" data-icon="keyboard_arrow_down">keyboard_arrow_down</span></button>
+</div>
+<div class="flex items-center gap-xs text-on-surface-variant hover:text-on-surface cursor-pointer">
+<span class="material-symbols-outlined text-base" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-code-md text-code-md">89</span>
+</div>
+</div>
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-surface flex items-center justify-center overflow-hidden"><img class="w-full h-full object-cover" data-alt="A hyper-realistic close-up portrait of a female lead engineer with neon blue rim lighting in a dark cyberpunk server room environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCh5kJ6cihaBlgCza_ff8Cpr-6F2S6HoqLCt7j3JC7FXNQVcVZXIQExaunjPLAttIekYxts6Oe1eABs6oENAbQzVjrkVWOf9BTFtTLYz50pt7j0kHnOAi95I-o-yP8NZxTVwO5SrbNnPDKi0VuAgZsrYWs7Yo6Z14eo8yHxUR5Ah0_MpzxJ-jA4MmdwuzTmiyot52Uel3u9W6_wBd6fQZmLlwGtLpIwT7c43DEovnauTmF_3c7GYhVD8w"/></div>
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-surface flex items-center justify-center overflow-hidden"><img class="w-full h-full object-cover" data-alt="A stylized 3D avatar of a robot with a glowing purple visor, set against a deep midnight blue tech background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4j-ZWRZJkfWYZYSU4ABm35pXnlbsluAS3jLAM4SiOYYpCecqz0O_ov4syP6o7MMvF4AWjC8eGqr7IipZI6DJhLJyRNgP6K8FpCLSp2WWhfpxcLuIMPH08THsd57UvmujHfDxPpRKqUyGeXccVEFcbFj5rlMYfcHPt3ZsroiBFlr9x-BOspoZ74pzBpxTJCjaVLYYn4se2spsX8zX4vaHndQMyl_dnydw8qbI9-fkmEVAkBfvXwOkYZA"/></div>
+<div class="w-6 h-6 rounded-full bg-surface-container border border-surface flex items-center justify-center font-label-caps text-label-caps text-xs">+5</div>
+</div>
+</div>
+</article>
+<!-- Standard Post -->
+<article class="bg-surface-container-low rounded-xl border border-outline-variant/30 p-md flex gap-sm hover:border-outline-variant transition-colors">
+<!-- Vote Column (Reddit style desktop, but compact for mobile) -->
+<div class="flex flex-col items-center gap-xs hidden sm:flex pt-sm">
+<button class="vote-btn hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="keyboard_arrow_up">keyboard_arrow_up</span></button>
+<span class="font-code-md text-code-md font-bold text-on-surface">128</span>
+<button class="vote-btn hover:text-error transition-colors"><span class="material-symbols-outlined" data-icon="keyboard_arrow_down">keyboard_arrow_down</span></button>
+</div>
+<div class="flex-1 flex flex-col gap-xs">
+<div class="flex items-center gap-sm">
+<span class="font-code-md text-code-md text-primary bg-primary/10 px-sm py-xs rounded">#RFC</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-xs">
+<span class="w-4 h-4 rounded-full overflow-hidden bg-surface-container"><img class="w-full h-full object-cover" data-alt="Abstract geometric avatar icon using primary colors on a dark background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOd4pjlaEKfGsFTEWtzX5l8Bhy93wYAJf2YiC6417jp5U8IEwW3YMdHx3xLdUkl7_GZ1QLgO4tMMqygJdvtSkkn__RLdVV0jHcEkrCkeXsvTz5fGLHxo1-KlSmjSot8p5BBE4QaSkLGuVhQy-5wYHV77XSB5znLorKNwIvfsfHy-uxsO23GsZGVxLMuGXpOLNcAtqM31Ke_ED-nYn-U22LbcHvRaDOv2MLlWeALj-dicsD2PdWKPGXHQ"/></span>
+                        @dev_alex • 4h ago
+                    </span>
+</div>
+<h3 class="font-body-md text-body-md font-bold text-on-surface">Proposal: Standardize API Response Error Formatting</h3>
+<div class="sm:hidden flex items-center justify-between mt-sm pt-sm border-t border-outline-variant/20">
+<div class="flex items-center gap-sm">
+<div class="flex items-center gap-xs text-on-surface-variant bg-surface-container rounded-full px-sm py-xs border border-outline-variant/30">
+<button class="vote-btn hover:text-primary transition-colors"><span class="material-symbols-outlined text-sm" data-icon="keyboard_arrow_up">keyboard_arrow_up</span></button>
+<span class="font-code-md text-code-md text-on-surface text-xs font-bold">128</span>
+<button class="vote-btn hover:text-error transition-colors"><span class="material-symbols-outlined text-sm" data-icon="keyboard_arrow_down">keyboard_arrow_down</span></button>
+</div>
+<div class="flex items-center gap-xs text-on-surface-variant bg-surface-container rounded-full px-sm py-xs border border-outline-variant/30">
+<span class="material-symbols-outlined text-sm" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-code-md text-code-md text-xs">42</span>
+</div>
+</div>
+</div>
+</div>
+</article>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 lg:hidden flex justify-around items-center h-16 pb-safe bg-surface-container/90 backdrop-blur-xl border-t border-outline-variant shadow-lg rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-transform flex-1 h-full" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-caps text-label-caps">Chat</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-bold active:scale-90 transition-transform flex-1 h-full" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="dashboard_customize" data-weight="fill" style="font-variation-settings: 'FILL' 1;">dashboard_customize</span>
+<span class="font-label-caps text-label-caps">Boards</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-transform flex-1 h-full" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="rss_feed">rss_feed</span>
+<span class="font-label-caps text-label-caps">Feed</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-transform flex-1 h-full" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="call">call</span>
+<span class="font-label-caps text-label-caps">Voice</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-transform flex-1 h-full" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-label-caps text-label-caps">Profile</span>
+</a>
+</nav>
+<!-- FAB for new post -->
+<button class="fixed bottom-24 right-4 w-14 h-14 bg-primary text-on-primary rounded-full shadow-[0_4px_14px_0_rgba(208,188,255,0.39)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all lg:hidden z-40">
+<span class="material-symbols-outlined text-2xl" data-icon="add">add</span>
+</button>
+</body></html>

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Omix Community - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-highest": "#2d3449",
+                        "on-primary": "#3c0091",
+                        "error": "#ffb4ab",
+                        "on-surface-variant": "#cbc3d7",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "surface-container-high": "#222a3d",
+                        "on-primary-fixed": "#23005c",
+                        "primary": "#d0bcff",
+                        "primary-container": "#a078ff",
+                        "surface-container-low": "#131b2e",
+                        "surface-container-lowest": "#060e20",
+                        "secondary": "#4fdbc8",
+                        "on-primary-container": "#340080",
+                        "on-tertiary": "#620040",
+                        "primary-fixed-dim": "#d0bcff",
+                        "secondary-fixed": "#71f8e4",
+                        "tertiary": "#ffafd3",
+                        "on-secondary-fixed": "#00201c",
+                        "surface-tint": "#d0bcff",
+                        "tertiary-fixed": "#ffd8e7",
+                        "outline-variant": "#494454",
+                        "on-tertiary-fixed-variant": "#85145a",
+                        "on-primary-fixed-variant": "#5516be",
+                        "on-error-container": "#ffdad6",
+                        "surface": "#0b1326",
+                        "on-tertiary-fixed": "#3d0026",
+                        "inverse-on-surface": "#283044",
+                        "inverse-primary": "#6d3bd7",
+                        "on-secondary-container": "#003f38",
+                        "background": "#0b1326",
+                        "surface-container": "#171f33",
+                        "inverse-surface": "#dae2fd",
+                        "surface-dim": "#0b1326",
+                        "on-tertiary-container": "#560038",
+                        "surface-bright": "#31394d",
+                        "on-surface": "#dae2fd",
+                        "on-secondary": "#003731",
+                        "error-container": "#93000a",
+                        "tertiary-container": "#e364a7",
+                        "tertiary-fixed-dim": "#ffafd3",
+                        "on-background": "#dae2fd",
+                        "on-error": "#690005",
+                        "surface-variant": "#2d3449",
+                        "primary-fixed": "#e9ddff",
+                        "on-secondary-fixed-variant": "#005048",
+                        "outline": "#958ea0",
+                        "secondary-container": "#04b4a2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "base": "4px",
+                        "lg": "24px",
+                        "sidebar_width": "280px",
+                        "gutter": "16px",
+                        "sm": "8px",
+                        "xl": "40px",
+                        "xs": "4px",
+                        "md": "16px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "code-md": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["JetBrains Mono"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "code-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .code-block-bg {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Custom scrollbar for chat area */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #494454;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #958ea0;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md h-screen w-screen overflow-hidden flex">
+<!-- Left Sidebar (Workspace / Nav) -->
+<nav class="hidden lg:flex flex-col h-full w-sidebar_width p-md bg-surface-container-low border-r border-outline-variant z-20">
+<!-- Brand / Workspace Header -->
+<div class="flex items-center gap-sm mb-lg">
+<div class="w-10 h-10 rounded-lg overflow-hidden shrink-0">
+<img alt="Workspace Logo" class="w-full h-full object-cover" data-alt="A sleek, modern geometric logo design suitable for a high-tech developer community, featuring sharp angles and a vibrant electric violet gradient against a dark deep space background, highly detailed and precise." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOUKWPCzOSRsP64SjEJooWUndKpTl3Lr9HChTJpMPQsq5tGQS5U4rYZ7hVCP8SpKQOwVBDqIFpjXM803nlo0GbPVVV77NQ3QiiLj9YftNHL3s8c05gOT_ZcKgmF7zZ2VDhDWuR1RAq7rGTRE4YbaZQtkrRGnYR8DKhsN2s36I8D7N3DPoMs-0DuWcHqtiJwvM1RqBaYEKW8iIt00WHbC5BDqyc_0zxZ4-H2RPGWYEwreB8W2utByH4Gg"/>
+</div>
+<div>
+<h1 class="font-headline-sm text-headline-sm text-primary font-bold">Omix Community</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">omix.dev/workspace</p>
+</div>
+</div>
+<!-- Navigation Drawer Items -->
+<div class="flex flex-col gap-xs flex-grow">
+<!-- Active Item: Workspaces (Assuming we are in a specific workspace view) -->
+<a class="flex items-center gap-md bg-primary-container text-on-primary-container rounded-xl px-md py-sm border-l-2 border-primary active:scale-95 duration-100 transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+<span class="font-body-md text-body-md font-medium">Workspaces</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-md py-sm hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 rounded-xl" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-body-md text-body-md">Threads</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-md py-sm hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 rounded-xl" href="#">
+<span class="material-symbols-outlined">forum</span>
+<span class="font-body-md text-body-md">Forums</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-md py-sm hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 rounded-xl" href="#">
+<span class="material-symbols-outlined">campaign</span>
+<span class="font-body-md text-body-md">Updates</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-md py-sm hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 rounded-xl" href="#">
+<span class="material-symbols-outlined">videocam</span>
+<span class="font-body-md text-body-md">Calls</span>
+</a>
+</div>
+<!-- User Profile Area (Bottom) -->
+<div class="mt-auto pt-md border-t border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<div class="relative">
+<img alt="User avatar" class="w-10 h-10 rounded-full object-cover" data-alt="A cinematic, low-key lighting portrait of a software developer looking focused, illuminated by the soft blue and purple glow of computer monitors in a dark, high-tech server room environment, hyper-realistic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-mh0TF83TWmhnQllND13-4GvyixNhBcNBzLgLf3hbpyydJ06hIJUvZ5CdzKpID3Nawm0Zut88wY9IvViPuuoxift2OTQy5JGgGc_mX0ihPfwh05ZDztcstWNo-SCG3ZWdEU-YtLSt8Obp4kAnTsRwCCsilFxenXeT-BKIbLYVHQ4XY9Y15tlDCUnjjzGIEhnk3z499l0FpIgU726ivsgQBMkqzl-9l8frC4-yEfAiKTaAz-igqKMXHA"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-secondary rounded-full border-2 border-surface-container-low"></div>
+</div>
+<div>
+<div class="font-body-md text-body-md font-medium">Developer Name</div>
+<div class="font-body-sm text-body-sm text-secondary">Online</div>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</nav>
+<!-- Main Content Area (Channels + Chat + Right Bar) -->
+<main class="flex-grow flex flex-col md:flex-row h-full overflow-hidden bg-surface relative z-10">
+<!-- Channels Pane (Middle-Left) -->
+<aside class="w-64 bg-surface-container shrink-0 border-r border-outline-variant flex flex-col h-full hidden md:flex">
+<!-- Channel Header -->
+<div class="h-16 flex items-center justify-between px-md border-b border-outline-variant glass-panel">
+<h2 class="font-headline-sm text-headline-sm font-semibold truncate">Frontend Core</h2>
+<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">keyboard_arrow_down</span></button>
+</div>
+<!-- Channels List -->
+<div class="flex-grow overflow-y-auto p-sm space-y-lg custom-scrollbar">
+<!-- Category: Boardrooms -->
+<div>
+<div class="flex items-center justify-between px-sm mb-xs text-on-surface-variant group cursor-pointer hover:text-on-surface transition-colors">
+<span class="font-label-caps text-label-caps uppercase tracking-wider text-[10px]">Boardrooms</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">add</span>
+</div>
+<div class="space-y-[2px]">
+<a class="flex items-center gap-sm px-sm py-xs rounded-md text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">campaign</span>
+<span class="font-body-sm text-body-sm truncate">Announcements</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs rounded-md text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">event</span>
+<span class="font-body-sm text-body-sm truncate">Sprint Planning</span>
+</a>
+</div>
+</div>
+<!-- Category: Text Channels -->
+<div>
+<div class="flex items-center justify-between px-sm mb-xs text-on-surface-variant group cursor-pointer hover:text-on-surface transition-colors">
+<span class="font-label-caps text-label-caps uppercase tracking-wider text-[10px]">Text Channels</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">add</span>
+</div>
+<div class="space-y-[2px]">
+<!-- Active Channel -->
+<a class="flex items-center justify-between px-sm py-xs rounded-md bg-surface-container-highest text-on-surface border-l-[2px] border-primary transition-all group" href="#">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-[18px] text-primary">tag</span>
+<span class="font-body-sm text-body-sm font-medium truncate">architecture-discuss</span>
+</div>
+<span class="bg-primary/20 text-primary text-[10px] px-1.5 py-0.5 rounded">3</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs rounded-md text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">tag</span>
+<span class="font-body-sm text-body-sm truncate">general</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs rounded-md text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">tag</span>
+<span class="font-body-sm text-body-sm truncate">help-requests</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs rounded-md text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all opacity-60" href="#">
+<span class="material-symbols-outlined text-[18px]">lock</span>
+<span class="font-body-sm text-body-sm truncate">leads-only</span>
+</a>
+</div>
+</div>
+<!-- Category: Voice -->
+<div>
+<div class="flex items-center justify-between px-sm mb-xs text-on-surface-variant group cursor-pointer hover:text-on-surface transition-colors">
+<span class="font-label-caps text-label-caps uppercase tracking-wider text-[10px]">Voice</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">add</span>
+</div>
+<div class="space-y-[2px]">
+<a class="flex items-center gap-sm px-sm py-xs rounded-md text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">volume_up</span>
+<span class="font-body-sm text-body-sm truncate">Daily Standup</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs rounded-md text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">volume_up</span>
+<span class="font-body-sm text-body-sm truncate">Watercooler</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Connection Status -->
+<div class="p-sm bg-surface-container-lowest border-t border-outline-variant flex items-center gap-sm">
+<span class="material-symbols-outlined text-secondary text-[18px]">wifi</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-[10px] text-secondary">Voice Connected</span>
+<span class="font-body-sm text-body-sm text-[11px] text-on-surface-variant truncate">Daily Standup - 4ms</span>
+</div>
+</div>
+</aside>
+<!-- Center Chat Area -->
+<section class="flex-grow flex flex-col min-w-0 bg-surface relative">
+<!-- Top App Bar (Mobile / Chat Header) -->
+<header class="h-16 shrink-0 glass-panel border-b border-outline-variant flex items-center justify-between px-md z-30">
+<div class="flex items-center gap-sm">
+<!-- Mobile Menu Toggle (Visible only on small screens) -->
+<button class="lg:hidden text-on-surface-variant p-sm rounded-md hover:bg-surface-container">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="material-symbols-outlined text-primary text-xl hidden md:block">tag</span>
+<h2 class="font-headline-sm text-headline-sm font-semibold">architecture-discuss</h2>
+<span class="text-on-surface-variant mx-2 hidden md:block">|</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate hidden md:block max-w-md">Discussion regarding v3.0 core infrastructure refactor.</p>
+</div>
+<div class="flex items-center gap-sm">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-sm rounded-md hover:bg-surface-container hidden md:block">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-sm rounded-md hover:bg-surface-container">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-sm rounded-md hover:bg-surface-container hidden md:block">
+<span class="material-symbols-outlined">people</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-sm rounded-md hover:bg-surface-container md:hidden">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</header>
+<!-- Chat Stream -->
+<div class="flex-grow overflow-y-auto p-lg space-y-xl custom-scrollbar flex flex-col justify-end pb-4">
+<!-- Date Divider -->
+<div class="flex items-center justify-center relative my-4">
+<hr class="w-full border-outline-variant absolute"/>
+<span class="bg-surface px-4 font-label-caps text-label-caps text-[10px] text-on-surface-variant z-10 relative">TODAY</span>
+</div>
+<!-- Message: Other User -->
+<div class="flex gap-md group">
+<img alt="Alex avatar" class="w-10 h-10 rounded-lg object-cover shrink-0 mt-1 cursor-pointer hover:opacity-80 transition-opacity" data-alt="A bright, high-contrast avatar image of a stylized cybernetic owl in vibrant neon pink and teal colors against a deep obsidian background, highly detailed 3d render." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWYtFrm_k2PwYAuUzxKZguFG5CbTIIdiRI6lmLQg-iQM96DCQ0QpI9XHCOgV2lEAtiyB16hqUibFptMCPzZdnNp6SR1AVJaNhP5mZd1iaDjBoy06J8FnqW80q-hInBey4BaAduUgqJrNrLWnwuJ-E7oDi9XHFFyWnoWyzgHBW0zm0HMXE9wPw--YFp2-SPAfl4vVkXVaJw4zdENIAaHNFao7Qh6a_p3lZ0lb8Y32vo9VD-yDNTmMPyZA"/>
+<div class="flex-grow">
+<div class="flex items-baseline gap-2 mb-1">
+<span class="font-body-md text-body-md font-semibold hover:underline cursor-pointer text-primary">Alex Chen</span>
+<span class="font-body-sm text-body-sm text-[11px] text-on-surface-variant">10:42 AM</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface space-y-2">
+<p>I've been reviewing the PR for the state management overhaul. The new context provider looks solid, but I'm slightly concerned about the re-render performance on the deep nested components.</p>
+<p>Have we considered memoizing the selectors?</p>
+</div>
+<!-- Message Actions (Hover) -->
+<div class="absolute right-4 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity flex bg-surface-container-high rounded-md border border-outline-variant shadow-lg">
+<button class="p-1 hover:bg-surface-container-highest text-on-surface-variant hover:text-primary rounded-l-md"><span class="material-symbols-outlined text-[18px]">add_reaction</span></button>
+<button class="p-1 hover:bg-surface-container-highest text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined text-[18px]">reply</span></button>
+<button class="p-1 hover:bg-surface-container-highest text-on-surface-variant hover:text-primary rounded-r-md"><span class="material-symbols-outlined text-[18px]">more_horiz</span></button>
+</div>
+</div>
+</div>
+<!-- Message: System / Thread Starter -->
+<div class="flex gap-md px-md py-sm bg-surface-container-lowest border border-outline-variant rounded-md items-center">
+<span class="material-symbols-outlined text-secondary text-xl">merge</span>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex-grow">
+<span class="text-on-surface font-medium">Sarah J.</span> merged PR <a class="text-secondary hover:underline" href="#">#402</a> from <code class="font-code-md text-[11px] bg-surface-container px-1 py-0.5 rounded">feature/auth-flow</code>
+</div>
+<span class="font-body-sm text-body-sm text-[11px] text-on-surface-variant">11:05 AM</span>
+</div>
+<!-- Message: Self (Current User) with Code Block -->
+<div class="flex gap-md group">
+<div class="w-10 h-10 rounded-lg overflow-hidden shrink-0 mt-1">
+<img alt="User avatar" class="w-full h-full object-cover" data-alt="A cinematic, low-key lighting portrait of a software developer looking focused, illuminated by the soft blue and purple glow of computer monitors in a dark, high-tech server room environment, hyper-realistic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiHV7zAcQiO0CM8EeMB2aqvCCyYeOXDbvEb1CCk1DouJ29WFK_DGhDwmmFxSr5A0cXltdostOlD8rkwDaMm1rGwoSiJfPm8hss_0kn_0JLdJClO1ynViZASupIdFneJCgjPsiogM-9COQYWsOtVWQlH_mcuXSl6T79nBx_GrksOCOLEnle87rfzi6d3zNaZ8RAjIUaWmELx-n6uWk-gfGXN9xhN-sl2_Vp-I5obhLHbC3-WzKYWKNSBg"/>
+</div>
+<div class="flex-grow">
+<div class="flex items-baseline gap-2 mb-1">
+<span class="font-body-md text-body-md font-semibold text-on-surface">You</span>
+<span class="font-body-sm text-body-sm text-[11px] text-on-surface-variant">11:12 AM</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface space-y-2 border-l-2 border-primary pl-3 ml-[2px]">
+<p>Good catch, Alex. We definitely need memoization there. I drafted a quick wrapper we could use for the complex selectors to prevent those unnecessary render cycles.</p>
+<!-- Code Block -->
+<div class="relative code-block-bg rounded-lg border border-outline-variant overflow-hidden mt-2">
+<div class="flex items-center justify-between px-3 py-1 bg-surface-container-highest border-b border-outline-variant">
+<span class="font-label-caps text-[10px] text-on-surface-variant">typescript</span>
+<button class="text-on-surface-variant hover:text-on-surface flex items-center gap-1 text-[10px] font-label-caps uppercase">
+<span class="material-symbols-outlined text-[14px]">content_copy</span> Copy
+                                    </button>
+</div>
+<pre class="p-4 overflow-x-auto"><code class="font-code-md text-code-md text-on-surface-variant">
+<span class="text-secondary">import</span> { useMemo } <span class="text-secondary">from</span> <span class="text-tertiary">'react'</span>;
+
+<span class="text-primary-container">export const</span> <span class="text-secondary-fixed">useDeepSelector</span> = (selector) =&gt; {
+  <span class="text-primary-container">const</span> state = useAppState();
+  
+  <span class="text-primary-container">return</span> <span class="text-secondary-fixed">useMemo</span>(() =&gt; {
+    <span class="text-primary-container">return</span> <span class="text-secondary-fixed">selector</span>(state);
+  }, [state, selector]);
+};
+                                </code></pre>
+</div>
+</div>
+<!-- Message Actions (Hover) -->
+<div class="absolute right-4 -mt-8 opacity-0 group-hover:opacity-100 transition-opacity flex bg-surface-container-high rounded-md border border-outline-variant shadow-lg">
+<button class="p-1 hover:bg-surface-container-highest text-on-surface-variant hover:text-primary rounded-l-md"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+<button class="p-1 hover:bg-surface-container-highest text-on-surface-variant hover:text-error"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+<button class="p-1 hover:bg-surface-container-highest text-on-surface-variant hover:text-primary rounded-r-md"><span class="material-symbols-outlined text-[18px]">more_horiz</span></button>
+</div>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-md bg-surface shrink-0 z-20">
+<div class="relative flex items-end bg-surface-container-low rounded-xl border border-outline-variant focus-within:border-primary focus-within:shadow-[0_0_0_1px_rgba(208,188,255,0.5)] transition-all overflow-hidden">
+<div class="flex items-center gap-1 p-2 shrink-0">
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-colors hidden sm:block">
+<span class="material-symbols-outlined">gif_box</span>
+</button>
+</div>
+<textarea class="w-full bg-transparent border-none focus:ring-0 text-on-surface font-body-md py-3 px-2 resize-none max-h-32 placeholder-on-surface-variant" placeholder="Message #architecture-discuss..." rows="1"></textarea>
+<div class="flex items-center gap-2 p-2 shrink-0">
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined">sentiment_satisfied</span>
+</button>
+<button class="p-1.5 bg-primary text-on-primary rounded-lg hover:bg-primary-container transition-colors font-medium text-sm flex items-center justify-center shadow-md">
+<span class="material-symbols-outlined text-[18px] px-1">send</span>
+</button>
+</div>
+</div>
+<div class="text-[10px] text-on-surface-variant mt-2 text-center font-body-sm">
+<span class="font-semibold">Markdown</span> is supported. Press <kbd class="bg-surface-container px-1 py-0.5 rounded border border-outline-variant">Enter</kbd> to send.
+                </div>
+</div>
+</section>
+<!-- Right Sidebar (Members & Widgets) -->
+<aside class="w-64 bg-surface-container-low shrink-0 border-l border-outline-variant flex-col h-full hidden xl:flex overflow-y-auto custom-scrollbar">
+<!-- Pinned Updates Widget (Bento/Card Style) -->
+<div class="p-md border-b border-outline-variant">
+<div class="flex items-center justify-between mb-sm">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Pinned Updates</h3>
+<span class="material-symbols-outlined text-[16px] text-primary">push_pin</span>
+</div>
+<!-- Integrated Boardroom Card -->
+<div class="bg-gradient-to-br from-surface-container-highest to-surface-container rounded-xl p-sm border border-outline-variant relative overflow-hidden group cursor-pointer hover:border-primary/50 transition-colors">
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary"></div>
+<h4 class="font-body-md text-body-md font-semibold text-on-surface mb-1 mt-1">v3.0 Release Freeze</h4>
+<p class="font-body-sm text-body-sm text-[12px] text-on-surface-variant line-clamp-2 mb-2">Code freeze begins Friday at 17:00 UTC. Ensure all critical PRs are merged.</p>
+<div class="flex items-center justify-between mt-2">
+<span class="bg-error/10 text-error text-[10px] px-1.5 py-0.5 rounded font-medium">High Priority</span>
+<span class="font-body-sm text-body-sm text-[10px] text-on-surface-variant">Yesterday</span>
+</div>
+</div>
+</div>
+<!-- Members List -->
+<div class="p-md flex-grow space-y-md">
+<!-- Online Role Group -->
+<div>
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-sm flex items-center gap-2">
+                        Core Team — 3
+                    </h3>
+<div class="space-y-sm">
+<!-- Member -->
+<div class="flex items-center gap-sm group cursor-pointer hover:bg-surface-container p-1 rounded-md transition-colors">
+<div class="relative">
+<img alt="User" class="w-8 h-8 rounded-full object-cover" data-alt="A cinematic, low-key lighting portrait of a software developer looking focused, illuminated by the soft blue and purple glow of computer monitors in a dark, high-tech server room environment, hyper-realistic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGxY5xi9zZBDzueLeJ7RFf-DnKQvPI3O2meaD6e7Vi_UYb1eqtTWEv2KWJwcopQYwsHuoHT3l6QoCG25Y8PGLmRcwMJzip64Ny9isbfVIbj4BiI8aL0KQN3VC4RMtHscGoLgKszYNKVknUm5IYIKSpSw-CsNJ7GFvF2pc0u4XpAwY9C1L1FD0ugbaYYqIoOVYqNPsSITwfCg7cRYikCpn-ZP_jnVpZkdcIAyJ42tVc2-Uj0ckBBvLBLw"/>
+<div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-secondary rounded-full border-2 border-surface-container-low"></div>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-[14px] font-medium text-on-surface group-hover:text-primary transition-colors">You</span>
+<span class="font-body-sm text-body-sm text-[10px] text-on-surface-variant truncate">Working on UI...</span>
+</div>
+</div>
+<!-- Member -->
+<div class="flex items-center gap-sm group cursor-pointer hover:bg-surface-container p-1 rounded-md transition-colors">
+<div class="relative">
+<img alt="Alex" class="w-8 h-8 rounded-full object-cover" data-alt="A bright, high-contrast avatar image of a stylized cybernetic owl in vibrant neon pink and teal colors against a deep obsidian background, highly detailed 3d render." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBT_Gao8MSdVKt1jfYe1zoiUGcV52xQPe6kxr6Ivx8smrl6Tf68nSStKeO81dWzCAsMbBNvVW-pQfXnYPouQXla1QPV3fMT88cZ3fViKBIcWHuWJCUPjXQXH8iTTdtyNuPC3aMfqRXN3DaR86OXhJsgwPVBpFVEWWy6kvoJUyJsz461LH8fI6b8cf_lamINyysRDwjGve8cOPoV-vVF_hkwFFt18_aGhSMVjokcFLeC_id82MnazX6Luw"/>
+<div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-secondary rounded-full border-2 border-surface-container-low"></div>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-[14px] font-medium text-on-surface group-hover:text-primary transition-colors">Alex Chen</span>
+<span class="font-body-sm text-body-sm text-[10px] text-on-surface-variant truncate">Reviewing PRs</span>
+</div>
+</div>
+<!-- Member -->
+<div class="flex items-center gap-sm group cursor-pointer hover:bg-surface-container p-1 rounded-md transition-colors">
+<div class="relative">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm">SJ</div>
+<div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-error rounded-full border-2 border-surface-container-low"></div>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-[14px] font-medium text-on-surface group-hover:text-primary transition-colors">Sarah J.</span>
+<span class="font-body-sm text-body-sm text-[10px] text-error truncate">Do not disturb</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Offline Role Group -->
+<div class="opacity-60">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-sm flex items-center gap-2">
+                        Contributors — 12
+                    </h3>
+<div class="space-y-sm">
+<!-- Member Offline -->
+<div class="flex items-center gap-sm p-1">
+<div class="relative grayscale">
+<img alt="Offline User" class="w-8 h-8 rounded-full object-cover" data-alt="A simple, abstract geometric pattern avatar with cool grey and blue tones, minimalist design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhBbh6W1Y9JJ4aTTfcPbBhtAKr1LcPpbNMJLQHJMwIA6eXdUn8xa6ZVhLTQdxc0KZ67QxYZMYdZZF2WbAo5G7EMWDn5BX1T5ToUNmCJtTKFfpsAOvHeOm89Salap-pwFn1ab9xQs5m4W8NYzaLJKRGA_mhYoXJyxkxKE4Ol5zexD2381CLLI0osJw1zdDaC03vEdxRLEBR5ofmHBECbemu5K30E66nS94bXytCvZEAncWZohzoa1hRHg"/>
+<div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-outline rounded-full border-2 border-surface-container-low"></div>
+</div>
+<span class="font-body-md text-body-md text-[14px] text-on-surface-variant">Mike T.</span>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</main>
+<!-- Bottom Navigation Bar (Mobile Only - Replaces Side Nav) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 lg:hidden flex justify-around items-center h-16 pb-safe bg-surface-container/90 backdrop-blur-xl border-t border-outline-variant shadow-lg">
+<a class="flex flex-col items-center justify-center text-primary font-bold active:scale-90 transition-transform w-1/5" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+<span class="font-label-caps text-label-caps mt-1">Chat</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-transform w-1/5" href="#">
+<span class="material-symbols-outlined">dashboard_customize</span>
+<span class="font-label-caps text-label-caps mt-1">Boards</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-transform w-1/5" href="#">
+<span class="material-symbols-outlined">rss_feed</span>
+<span class="font-label-caps text-label-caps mt-1">Feed</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-transform w-1/5" href="#">
+<span class="material-symbols-outlined">call</span>
+<span class="font-label-caps text-label-caps mt-1">Voice</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-transform w-1/5" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-caps text-label-caps mt-1">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple textarea auto-resize script
+        const tx = document.getElementsByTagName("textarea");
+        for (let i = 0; i < tx.length; i++) {
+            tx[i].setAttribute("style", "height:" + (tx[i].scrollHeight) + "px;overflow-y:hidden;");
+            tx[i].addEventListener("input", OnInput, false);
+        }
+
+        function OnInput() {
+            this.style.height = 0;
+            this.style.height = (this.scrollHeight) + "px";
+        }
+    </script>
+</body></html>

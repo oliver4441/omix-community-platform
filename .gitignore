@@ -17,3 +17,7 @@ dist
 .vscode
 .idea
 .temp
+.wrangler
+workers/**/.dev.vars
+# graphify knowledge-graph cache (regenerated, not source)
+graphify-out/cache/

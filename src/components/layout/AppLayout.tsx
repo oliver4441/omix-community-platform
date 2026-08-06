@@ -3,16 +3,21 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { ServerRail } from "@/features/servers/ServerRail";
+import { WorkspaceRail } from "@/components/layout/WorkspaceRail";
 import { ChannelSidebar } from "@/features/channels/ChannelSidebar";
 import { ChatPane } from "@/features/chat/ChatPane";
+import { CallPanel } from "@/features/chat/CallPanel";
 import { DMSidebar } from "@/features/chat/DMSidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { BoardroomFeed } from "@/features/boardroom/BoardroomFeed";
+import { DeveloperProfile } from "@/features/profile/DeveloperProfile";
+import { SettingsPage } from "@/features/settings/SettingsPage";
+import type { AppView } from "@/lib/views";
 
 export function AppLayout() {
   const { user } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
-  const [view, setView] = useState<"chat" | "dms">("chat");
+  const [view, setView] = useState<AppView>("chat");
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -23,28 +28,50 @@ export function AppLayout() {
 
   return (
     <div
-      className="h-screen w-full flex bg-[var(--color-bg-deeper)] overflow-hidden"
+      className="h-screen w-full flex bg-background overflow-hidden"
       role="application"
-      aria-label="Omix Social chat application"
+      aria-label="Omix Community workspace"
     >
       <ErrorBoundary>
-        <ServerRail
-          isMobile={isMobile}
+        <WorkspaceRail
           currentView={view}
-          onDMClick={() => setView("dms")}
+          onNavigate={setView}
+          displayName={user?.displayName || "User"}
+          avatarUrl={user?.photoURL}
         />
       </ErrorBoundary>
 
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden">
         {view === "dms" ? (
+          <>
+            <ErrorBoundary>
+              <DMSidebar
+                isMobile={isMobile}
+                currentView={view}
+                displayName={user?.displayName || "User"}
+                setView={setView}
+              />
+            </ErrorBoundary>
+            <ErrorBoundary>
+              <ChatPane
+                isMobile={isMobile}
+                currentView={view}
+                displayName={user?.displayName || "User"}
+              />
+            </ErrorBoundary>
+          </>
+        ) : view === "boards" ? (
           <ErrorBoundary>
-            <DMSidebar
-              isMobile={isMobile}
-              currentView={view}
-              displayName={user?.displayName || "User"}
-              setView={setView}
-            />
+            <BoardroomFeed isMobile={isMobile} />
+          </ErrorBoundary>
+        ) : view === "profile" ? (
+          <ErrorBoundary>
+            <DeveloperProfile isMobile={isMobile} displayName={user?.displayName || "User"} />
+          </ErrorBoundary>
+        ) : view === "settings" ? (
+          <ErrorBoundary>
+            <SettingsPage isMobile={isMobile} displayName={user?.displayName || "User"} />
           </ErrorBoundary>
         ) : (
           <>
@@ -68,6 +95,9 @@ export function AppLayout() {
 
       {/* Mobile bottom nav */}
       {isMobile && <MobileNav currentView={view} setView={setView} />}
+
+      {/* Global call overlay — stays mounted across views so calls survive navigation */}
+      <CallPanel />
     </div>
   );
 }

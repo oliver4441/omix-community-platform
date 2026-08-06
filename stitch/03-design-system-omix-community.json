@@ -1,0 +1,139 @@
+{
+  "name": "assets/97b9a2d81a58400a95954be934dde9cb",
+  "designSystem": {
+    "displayName": "Omix Community",
+    "styleGuidelines": "## Brand & Style\n\nThe design system is engineered for high-velocity developer collaboration, merging the real-time intimacy of chat with the structured permanence of forum-based threading. The brand personality is **technical, precise, and hyper-efficient**, evoking the feeling of a sophisticated command center rather than a social network.\n\nThe aesthetic follows a **Modern-Technical** approach with subtle **Glassmorphic** influences. It utilizes deep, low-light backgrounds to reduce eye strain during long coding sessions, accented by vibrant, neon-adjacent interactives that signal state and priority. Layouts prioritize data density and logic over decorative elements, ensuring that the interface recedes to let the conversation and code take center stage.\n\n## Layout & Spacing\n\nThe layout utilizes a **fluid multi-pane grid** for desktop and a **stacked single-column** model for mobile.\n\n- **Desktop:** A three-pane architecture (Navigation / Content / Utility) using fixed-width sidebars (280px) and a flexible center chat area. \n- **Mobile:** Prioritizes one-handed use with a 16px safe-area margin. The \"Navigation\" and \"Member List\" are tucked into off-canvas drawers triggered by bottom-bar icons.\n- **Rhythm:** An 8px base grid governs all spatial relationships. Compact vertical density is preferred in the chat stream to allow more messages to be visible at once.\n\n## Elevation & Depth\n\nVisual hierarchy is established through **Tonal Layering** and **Glassmorphism**, rather than heavy shadows.\n- **Level 0 (Deep):** `#0f172a` used for the workspace switcher and background.\n- **Level 1 (Surface):** `#1e293b` for the primary chat window and navigation menus.\n- **Level 2 (Overlay):** Popovers and modals use a semi-transparent version of the surface color with a `20px` backdrop blur and a `1px` border of `white/10%` to simulate frosted glass.\n- **Borders:** Use subtle high-precision strokes (`1px`) for section dividers to maintain a structured, \"engineered\" look without adding bulk.\n\n## Components\n\n- **Buttons:** Primary buttons use a solid Electric Violet fill. Secondary buttons use a \"Ghost\" style with a Cyber Teal border and no fill.\n- **Chat Bubbles:** Unlike consumer apps, chat bubbles are minimally styled. They feature a left-aligned border accent for \"Your\" messages and a subtle background tint for \"System\" messages. No heavy rounding or \"tails.\"\n- **Code Blocks:** Encased in a container with a `#000000/30%` background, featuring syntax highlighting using the Secondary and Tertiary colors. Include a \"Copy\" utility in the top-right corner.\n- **Channel Lists:** Use active state indicators involving a vertical 2px bar on the left edge and a subtle text color shift to White.\n- **Inputs:** Dark-filled with a 1px border that glows (box-shadow) Electric Violet upon focus.\n- **Integrated Boardroom:** A specialized card component for \"Updates\" that uses a subtle gradient header to distinguish high-priority announcement threads from regular chat.",
+    "theme": {
+      "colorMode": "DARK",
+      "font": "HANKEN_GROTESK",
+      "roundness": "ROUND_FOUR",
+      "customColor": "#8b5cf6",
+      "headlineFont": "HANKEN_GROTESK",
+      "bodyFont": "INTER",
+      "labelFont": "JETBRAINS_MONO",
+      "namedColors": {
+        "background": "#0b1326",
+        "error": "#ffb4ab",
+        "error_container": "#93000a",
+        "inverse_on_surface": "#283044",
+        "inverse_primary": "#6d3bd7",
+        "inverse_surface": "#dae2fd",
+        "on_background": "#dae2fd",
+        "on_error": "#690005",
+        "on_error_container": "#ffdad6",
+        "on_primary": "#3c0091",
+        "on_primary_container": "#340080",
+        "on_primary_fixed": "#23005c",
+        "on_primary_fixed_variant": "#5516be",
+        "on_secondary": "#003731",
+        "on_secondary_container": "#003f38",
+        "on_secondary_fixed": "#00201c",
+        "on_secondary_fixed_variant": "#005048",
+        "on_surface": "#dae2fd",
+        "on_surface_variant": "#cbc3d7",
+        "on_tertiary": "#620040",
+        "on_tertiary_container": "#560038",
+        "on_tertiary_fixed": "#3d0026",
+        "on_tertiary_fixed_variant": "#85145a",
+        "outline": "#958ea0",
+        "outline_variant": "#494454",
+        "primary": "#d0bcff",
+        "primary_container": "#a078ff",
+        "primary_fixed": "#e9ddff",
+        "primary_fixed_dim": "#d0bcff",
+        "secondary": "#4fdbc8",
+        "secondary_container": "#04b4a2",
+        "secondary_fixed": "#71f8e4",
+        "secondary_fixed_dim": "#4fdbc8",
+        "surface": "#0b1326",
+        "surface_bright": "#31394d",
+        "surface_container": "#171f33",
+        "surface_container_high": "#222a3d",
+        "surface_container_highest": "#2d3449",
+        "surface_container_low": "#131b2e",
+        "surface_container_lowest": "#060e20",
+        "surface_dim": "#0b1326",
+        "surface_tint": "#d0bcff",
+        "surface_variant": "#2d3449",
+        "tertiary": "#ffafd3",
+        "tertiary_container": "#e364a7",
+        "tertiary_fixed": "#ffd8e7",
+        "tertiary_fixed_dim": "#ffafd3"
+      },
+      "designMd": "---\nname: Omix Community\ncolors:\n  surface: '#0b1326'\n  surface-dim: '#0b1326'\n  surface-bright: '#31394d'\n  surface-container-lowest: '#060e20'\n  surface-container-low: '#131b2e'\n  surface-container: '#171f33'\n  surface-container-high: '#222a3d'\n  surface-container-highest: '#2d3449'\n  on-surface: '#dae2fd'\n  on-surface-variant: '#cbc3d7'\n  inverse-surface: '#dae2fd'\n  inverse-on-surface: '#283044'\n  outline: '#958ea0'\n  outline-variant: '#494454'\n  surface-tint: '#d0bcff'\n  primary: '#d0bcff'\n  on-primary: '#3c0091'\n  primary-container: '#a078ff'\n  on-primary-container: '#340080'\n  inverse-primary: '#6d3bd7'\n  secondary: '#4fdbc8'\n  on-secondary: '#003731'\n  secondary-container: '#04b4a2'\n  on-secondary-container: '#003f38'\n  tertiary: '#ffafd3'\n  on-tertiary: '#620040'\n  tertiary-container: '#e364a7'\n  on-tertiary-container: '#560038'\n  error: '#ffb4ab'\n  on-error: '#690005'\n  error-container: '#93000a'\n  on-error-container: '#ffdad6'\n  primary-fixed: '#e9ddff'\n  primary-fixed-dim: '#d0bcff'\n  on-primary-fixed: '#23005c'\n  on-primary-fixed-variant: '#5516be'\n  secondary-fixed: '#71f8e4'\n  secondary-fixed-dim: '#4fdbc8'\n  on-secondary-fixed: '#00201c'\n  on-secondary-fixed-variant: '#005048'\n  tertiary-fixed: '#ffd8e7'\n  tertiary-fixed-dim: '#ffafd3'\n  on-tertiary-fixed: '#3d0026'\n  on-tertiary-fixed-variant: '#85145a'\n  background: '#0b1326'\n  on-background: '#dae2fd'\n  surface-variant: '#2d3449'\ntypography:\n  display-lg:\n    fontFamily: Hanken Grotesk\n    fontSize: 48px\n    fontWeight: '700'\n    lineHeight: 56px\n    letterSpacing: -0.02em\n  headline-md:\n    fontFamily: Hanken Grotesk\n    fontSize: 32px\n    fontWeight: '600'\n    lineHeight: 40px\n    letterSpacing: -0.01em\n  headline-sm:\n    fontFamily: Hanken Grotesk\n    fontSize: 24px\n    fontWeight: '600'\n    lineHeight: 32px\n  body-lg:\n    fontFamily: Inter\n    fontSize: 18px\n    fontWeight: '400'\n    lineHeight: 28px\n  body-md:\n    fontFamily: Inter\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: 24px\n  body-sm:\n    fontFamily: Inter\n    fontSize: 14px\n    fontWeight: '400'\n    lineHeight: 20px\n  code-md:\n    fontFamily: JetBrains Mono\n    fontSize: 14px\n    fontWeight: '400'\n    lineHeight: 22px\n  label-caps:\n    fontFamily: JetBrains Mono\n    fontSize: 12px\n    fontWeight: '600'\n    lineHeight: 16px\n    letterSpacing: 0.05em\nrounded:\n  sm: 0.125rem\n  DEFAULT: 0.25rem\n  md: 0.375rem\n  lg: 0.5rem\n  xl: 0.75rem\n  full: 9999px\nspacing:\n  base: 4px\n  xs: 4px\n  sm: 8px\n  md: 16px\n  lg: 24px\n  xl: 40px\n  gutter: 16px\n  sidebar_width: 280px\n---\n\n## Brand & Style\n\nThe design system is engineered for high-velocity developer collaboration, merging the real-time intimacy of chat with the structured permanence of forum-based threading. The brand personality is **technical, precise, and hyper-efficient**, evoking the feeling of a sophisticated command center rather than a social network.\n\nThe aesthetic follows a **Modern-Technical** approach with subtle **Glassmorphic** influences. It utilizes deep, low-light backgrounds to reduce eye strain during long coding sessions, accented by vibrant, neon-adjacent interactives that signal state and priority. Layouts prioritize data density and logic over decorative elements, ensuring that the interface recedes to let the conversation and code take center stage.\n\n## Colors\n\nThe palette is built on a \"Developer Dark\" foundation. \n- **Primary (Electric Violet):** Used for primary actions, active states, and brand-critical highlights.\n- **Secondary (Cyber Teal):** Reserved for success states, code syntax highlighting, and secondary utility triggers.\n- **Background Tiers:** The system uses `#0f172a` for the base \"underlay\" (sidebars, backdrops) and `#1e293b` for the main content \"surface\" (chat containers, cards).\n- **Accents:** High-vibrancy tokens are used sparingly against dark surfaces to maintain high contrast (WCAG AA+) and provide clear visual affordance.\n\n## Typography\n\nThis design system employs a dual-font strategy:\n1. **Hanken Grotesk** for headings to provide a sharp, contemporary tech feel.\n2. **Inter** for body text to maximize legibility in dense chat streams.\n3. **JetBrains Mono** for metadata, labels, and code snippets, reinforcing the developer-centric nature of the platform.\n\nFor mobile devices, `display-lg` should scale down to `32px` to ensure titles fit within narrow viewports without excessive wrapping. All code blocks must use the monospaced font with a slightly reduced font size for maximum character-per-line efficiency.\n\n## Layout & Spacing\n\nThe layout utilizes a **fluid multi-pane grid** for desktop and a **stacked single-column** model for mobile.\n\n- **Desktop:** A three-pane architecture (Navigation / Content / Utility) using fixed-width sidebars (280px) and a flexible center chat area. \n- **Mobile:** Prioritizes one-handed use with a 16px safe-area margin. The \"Navigation\" and \"Member List\" are tucked into off-canvas drawers triggered by bottom-bar icons.\n- **Rhythm:** An 8px base grid governs all spatial relationships. Compact vertical density is preferred in the chat stream to allow more messages to be visible at once.\n\n## Elevation & Depth\n\nVisual hierarchy is established through **Tonal Layering** and **Glassmorphism**, rather than heavy shadows.\n- **Level 0 (Deep):** `#0f172a` used for the workspace switcher and background.\n- **Level 1 (Surface):** `#1e293b` for the primary chat window and navigation menus.\n- **Level 2 (Overlay):** Popovers and modals use a semi-transparent version of the surface color with a `20px` backdrop blur and a `1px` border of `white/10%` to simulate frosted glass.\n- **Borders:** Use subtle high-precision strokes (`1px`) for section dividers to maintain a structured, \"engineered\" look without adding bulk.\n\n## Shapes\n\nThe design system uses a **Soft (0.25rem)** roundedness logic to maintain a professional, \"tool-like\" appearance.\n- **Buttons and Inputs:** 4px (`rounded`) radius.\n- **Cards and Modals:** 8px (`rounded-lg`) radius.\n- **Avatars:** Strictly circular to contrast against the predominantly angular UI.\n- **Status Indicators:** Small 8px circles with a 2px outer glow (bloom) in the primary or secondary accent colors to indicate active presence or new notifications.\n\n## Components\n\n- **Buttons:** Primary buttons use a solid Electric Violet fill. Secondary buttons use a \"Ghost\" style with a Cyber Teal border and no fill.\n- **Chat Bubbles:** Unlike consumer apps, chat bubbles are minimally styled. They feature a left-aligned border accent for \"Your\" messages and a subtle background tint for \"System\" messages. No heavy rounding or \"tails.\"\n- **Code Blocks:** Encased in a container with a `#000000/30%` background, featuring syntax highlighting using the Secondary and Tertiary colors. Include a \"Copy\" utility in the top-right corner.\n- **Channel Lists:** Use active state indicators involving a vertical 2px bar on the left edge and a subtle text color shift to White.\n- **Inputs:** Dark-filled with a 1px border that glows (box-shadow) Electric Violet upon focus.\n- **Integrated Boardroom:** A specialized card component for \"Updates\" that uses a subtle gradient header to distinguish high-priority announcement threads from regular chat.",
+      "colorVariant": "FIDELITY",
+      "overridePrimaryColor": "#8b5cf6",
+      "overrideSecondaryColor": "#14b8a6",
+      "overrideTertiaryColor": "#f472b6",
+      "overrideNeutralColor": "#0f172a",
+      "spacingScale": 2,
+      "typography": {
+        "body-lg": {
+          "fontFamily": "Inter",
+          "fontSize": "18px",
+          "fontWeight": "400",
+          "lineHeight": "28px"
+        },
+        "body-md": {
+          "fontFamily": "Inter",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "24px"
+        },
+        "body-sm": {
+          "fontFamily": "Inter",
+          "fontSize": "14px",
+          "fontWeight": "400",
+          "lineHeight": "20px"
+        },
+        "code-md": {
+          "fontFamily": "JetBrains Mono",
+          "fontSize": "14px",
+          "fontWeight": "400",
+          "lineHeight": "22px"
+        },
+        "display-lg": {
+          "fontFamily": "Hanken Grotesk",
+          "fontSize": "48px",
+          "fontWeight": "700",
+          "lineHeight": "56px",
+          "letterSpacing": "-0.02em"
+        },
+        "headline-md": {
+          "fontFamily": "Hanken Grotesk",
+          "fontSize": "32px",
+          "fontWeight": "600",
+          "lineHeight": "40px",
+          "letterSpacing": "-0.01em"
+        },
+        "headline-sm": {
+          "fontFamily": "Hanken Grotesk",
+          "fontSize": "24px",
+          "fontWeight": "600",
+          "lineHeight": "32px"
+        },
+        "label-caps": {
+          "fontFamily": "JetBrains Mono",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "16px",
+          "letterSpacing": "0.05em"
+        }
+      },
+      "spacing": {
+        "base": "4px",
+        "gutter": "16px",
+        "lg": "24px",
+        "md": "16px",
+        "sidebar_width": "280px",
+        "sm": "8px",
+        "xl": "40px",
+        "xs": "4px"
+      },
+      "headlineFontFamily": "Hanken Grotesk",
+      "bodyFontFamily": "Inter",
+      "labelFontFamily": "Jetbrains Mono"
+    }
+  },
+  "version": "1"
+}

@@ -1,164 +1,105 @@
-"""
-IMMEDIATE MIGRATION EXECUTION
+/**
+ * Supabase migration status checker for Omix Community.
+ *
+ * The schema DDL lives in `supabase/migrations/*.sql` and is applied
+ * out-of-band (Supabase SQL editor or `supabase db push`). The files are
+ * idempotent (`CREATE TABLE IF NOT EXISTS ...`), so re-running them is safe.
+ *
+ * This script connects with the public anon key (the same one the client
+ * ships — no secrets needed) and reports which tables from the migration
+ * files already exist, so you know exactly what still needs applying.
+ *
+ * Usage:
+ *   node scripts/migrate-supabase.js
+ */
+import { readFileSync, readdirSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createClient } from "@supabase/supabase-js";
 
-This script directly executes the database migration using the provided Supabase credentials.
-"""
+// Public anon key — same value as src/lib/supabase.ts. The service-role key is
+// deliberately NOT used here (server-side only, via the Cloudflare Workers).
+const SUPABASE_URL = "https://frcmgkayluazwkokywux.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyY21na2F5bHV6ZWt5d3V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NDMzNzMsImV4cCI6MjEwMDMxOTM3M30.rDriWj_mHifzH3dSDOyNinNZM01Q-WADntw9-gtRDTM";
 
-import { createClient } from '@supabase/supabase-js';
+const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "supabase", "migrations");
 
-// Supabase credentials provided by the user
-const SUPABASE_URL = 'https://frcmgkayluazwkokywux.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyY21na2F5bHV7ZWt5d3V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NDMzNzMsImV4cCI6MjEwMDMxOTM3M30.qkase0jEdqiwjdVSMmUzpKCry8uYj2RhhnRZ3eeNXP0';
-const SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyY21na2F5bHV7ZWt5d3V4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDc0MzM3MywiZXhwIjoyMTAwMzE5MzczfQ.qkase0jEdqiwjdVSMmUzpKCry8uYj2RhhnRZ3eeNXP0';
+/** Extract `CREATE TABLE public.xxx` names from a SQL file. */
+function extractTables(sql) {
+  const tables = new Set();
+  const re = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?public\.([a-z0-9_]+)/gi;
+  let match;
+  while ((match = re.exec(sql)) !== null) tables.add(match[1].toLowerCase());
+  return [...tables];
+}
 
 async function main() {
-  console.log('🚀 Starting Immediate Supabase Database Migration');
-  console.log('📋 Provided by user');
-  
-  // Initialize Supabase clients
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  
-  try {
-    // Test connection with admin client
-    console.log('🔍 Testing Supabase connection...');
-    
-    // Try to create tables using admin client
-    const tables = [
-      'users',
-      'servers', 
-      'channels',
-      'messages',
-      'server_members',
-      'reactions'
-    ];
-    
-    let tablesCreated = 0;
-    
-    for (const table of tables) {
-      try {
-        // Insert a test row to verify table creation
-        const testData = {
-          id: `test-${table}-${Date.now()}`, // Unique ID to avoid conflicts
-          created_at: new Date().toISOString(),
-        };
-        
-        // Add table-specific fields
-        switch (table) {
-          case 'users':
-            testData.email = 'test@example.com';
-            testData.full_name = 'Migration Test User';
-            break;
-          case 'servers':
-            testData.name = 'Test Server';
-            testData.created_by = 'test-user-001';
-            testData.member_count = 1;
-            break;
-          case 'channels':
-            testData.name = 'general';
-            testData.server_id = 'test-server-001';
-            testData.created_by = 'test-user-001';
-            break;
-          case 'messages':
-            testData.content = 'Migration test message';
-            testData.channel_id = 'test-channel-001';
-            testData.user_id = 'test-user-001';
-            break;
-          case 'server_members':
-            testData.server_id = 'test-server-001';
-            testData.user_id = 'test-user-001';
-            testData.role = 'owner';
-            break;
-          case 'reactions':
-            testData.emoji = '✅';
-            testData.message_id = 'test-message-001';
-            testData.user_id = 'test-user-001';
-            break;
-        }
-        
-        const { error } = await supabaseAdmin
-          .from(table)
-          .insert(testData);
-          
-        if (error) {
-          if (error.code === 'PGRST116') {
-            // Table doesn't exist
-            console.log(`⚠️  Table ${table} doesn't exist - will need to create manually`);
-          } else if (error.code === '23505') {
-            // Row already exists (table exists but test row exists)
-            console.log(`✅ Table ${table} already exists`);
-            tablesCreated++;
-          } else {
-            // Other error
-            console.error(`❌ Error with table ${table}:`, error);
-          }
-        } else {
-          // Successfully inserted test row
-          tablesCreated++;
-          console.log(`✅ Table ${table} created/available`);
-          
-          // Delete the test row
-          await supabaseAdmin.from(table).delete().eq('id', testData.id);
-        }
-        
-      } catch (tableError) {
-        console.error(`💥 Table ${table} operation failed:`, tableError);
-      }
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: {
+      fetch: (input, init) =>
+        // Fail fast instead of hanging when the DB is unreachable.
+        fetch(input, { ...init, signal: AbortSignal.timeout(8_000) }),
+    },
+  });
+
+  const files = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
+
+  console.log("🚀 Omix migration status check");
+  console.log(`📁 Found ${files.length} migration file(s):`);
+  for (const f of files) console.log(`   • ${f}`);
+
+  const allTables = new Set();
+  for (const f of files) {
+    for (const t of extractTables(readFileSync(join(MIGRATIONS_DIR, f), "utf8"))) {
+      allTables.add(t);
     }
-    
-    console.log(`\n📊 Migration Status:`);
-    console.log(`   Tables checked: ${tables.length}`);
-    console.log(`   Tables available: ${tablesCreated}`);
-    console.log(`   Success rate: ${Math.round((tablesCreated / tables.length) * 100)}%`);
-    
-    if (tablesCreated > 0) {
-      console.log(`\n🎉 Migration setup completed!`);
-      console.log(`   ✅ Database connection established`);
-      console.log(`   ✅ Supabase infrastructure ready`);
-      console.log(`   ✅ Ready for application migration`);
-      
-      console.log(`\n🚀 Next Steps:`);
-      console.log(`   1. Update application environment variables`);
-      console.log(`   2. Replace Firebase calls with Supabase`);
-      console.log(`   3. Configure Vercel deployment`);
-      console.log(`   4. Run comprehensive testing`);
-      
-      return {
-        success: true,
-        message: 'Database infrastructure setup complete',
-        tablesReady: tablesCreated,
-        totalTables: tables.length
-      };
-    } else {
-      console.log(`\n❌ Migration failed - no tables available`);
-      return {
-        success: false,
-        message: 'Database infrastructure setup failed',
-        error: 'No tables could be accessed'
-      };
-    }
-    
-  } catch (error) {
-    console.error(`💥 Migration setup failed:`, error);
-    return {
-      success: false,
-      message: 'Database setup failed',
-      error
-    };
   }
-}
 
-// Execute migration if run directly
-if (require.main === module) {
-  main()
-    .then(result => {
-      console.log('\n✅ Migration execution completed');
-      process.exit(result.success ? 0 : 1);
+  console.log(`\n🔎 Checking ${allTables.size} table(s) from migrations…`);
+
+  // Run checks in parallel so a slow/unreachable DB fails fast instead of
+  // waiting N × 8s sequentially.
+  const checks = await Promise.all(
+    [...allTables].map(async (table) => {
+      const { error } = await supabase.from(table).select("*").limit(1);
+      const isMissing =
+        error && /Could not find the table|relation .* does not exist/i.test(error.message);
+      const isAuth =
+        error && /JWT|jwt|unauthorized|permission denied|invalid api key/i.test(error.message);
+      return { table, isMissing, isAuth };
     })
-    .catch(error => {
-      console.error('\n❌ Migration execution failed:', error);
-      process.exit(1);
-    });
+  );
+
+  const present = checks.filter((c) => !c.isMissing).map((c) => c.table);
+  const missing = checks.filter((c) => c.isMissing).map((c) => c.table);
+  const authBlocked = checks.filter((c) => c.isAuth);
+
+  for (const t of present) console.log(`   ✅ ${t}`);
+  for (const t of missing) console.log(`   ❌ ${t} — MISSING (apply migrations)`);
+
+  console.log(`\n📊 ${present.length}/${allTables.size} tables present`);
+  if (authBlocked.length > 0) {
+    console.log(
+      "\n⚠️  The anon key was rejected — results may be unreliable. Verify the key\n" +
+        "   in src/lib/supabase.ts matches your Supabase project."
+    );
+    process.exit(2);
+  }
+  if (missing.length > 0) {
+    console.log(
+      "\n❌ Some tables are missing. Apply the SQL in supabase/migrations/ via the\n" +
+        "   Supabase SQL editor (`supabase db push` also works)."
+    );
+    process.exit(1);
+  }
+  console.log("\n✅ Database schema is fully migrated.");
+  process.exit(0);
 }
 
-export default { main };
+main().catch((err) => {
+  console.error("💥 Migration check failed:", err);
+  process.exit(1);
+});

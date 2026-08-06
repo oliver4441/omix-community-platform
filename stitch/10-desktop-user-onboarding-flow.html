@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Omix Community - Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&amp;family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#0b1326",
+                        "secondary-container": "#04b4a2",
+                        "surface-container-lowest": "#060e20",
+                        "primary-fixed": "#e9ddff",
+                        "surface-container": "#171f33",
+                        "on-surface-variant": "#cbc3d7",
+                        "surface-container-highest": "#2d3449",
+                        "on-error": "#690005",
+                        "on-secondary-fixed-variant": "#005048",
+                        "on-surface": "#dae2fd",
+                        "tertiary-fixed-dim": "#ffafd3",
+                        "surface-tint": "#d0bcff",
+                        "on-background": "#dae2fd",
+                        "on-secondary-fixed": "#00201c",
+                        "surface-bright": "#31394d",
+                        "primary": "#d0bcff",
+                        "inverse-surface": "#dae2fd",
+                        "surface-dim": "#0b1326",
+                        "on-secondary-container": "#003f38",
+                        "surface": "#0b1326",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary": "#620040",
+                        "surface-container-high": "#222a3d",
+                        "tertiary-container": "#e364a7",
+                        "on-tertiary-fixed-variant": "#85145a",
+                        "outline-variant": "#494454",
+                        "on-primary-fixed": "#23005c",
+                        "error": "#ffb4ab",
+                        "on-tertiary-container": "#560038",
+                        "on-tertiary-fixed": "#3d0026",
+                        "inverse-primary": "#6d3bd7",
+                        "on-primary-container": "#340080",
+                        "outline": "#958ea0",
+                        "secondary-fixed": "#71f8e4",
+                        "surface-container-low": "#131b2e",
+                        "tertiary-fixed": "#ffd8e7",
+                        "on-primary-fixed-variant": "#5516be",
+                        "surface-variant": "#2d3449",
+                        "error-container": "#93000a",
+                        "inverse-on-surface": "#283044",
+                        "primary-fixed-dim": "#d0bcff",
+                        "secondary": "#4fdbc8",
+                        "on-secondary": "#003731",
+                        "tertiary": "#ffafd3",
+                        "primary-container": "#a078ff",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "on-primary": "#3c0091"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "sidebar_width": "280px",
+                        "md": "16px",
+                        "xl": "40px",
+                        "sm": "8px",
+                        "base": "4px",
+                        "xs": "4px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["JetBrains Mono"],
+                        "code-md": ["JetBrains Mono"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-sm": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "code-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(23, 31, 51, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .step-indicator-active {
+            box-shadow: 0 0 10px rgba(208, 188, 255, 0.5);
+        }
+
+        /* Hide scrollbar for clean modal look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex items-center justify-center p-4 antialiased relative overflow-hidden">
+<!-- Ambient Background Effect -->
+<div class="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+<div class="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-primary/5 blur-[120px]"></div>
+<div class="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-secondary/5 blur-[100px]"></div>
+</div>
+<!-- Modal Container -->
+<main class="glass-panel w-full max-w-4xl rounded-xl shadow-2xl relative z-10 flex flex-col md:flex-row overflow-hidden border border-outline-variant/30 min-h-[600px]">
+<!-- Left Sidebar: Progress / Steps (Hidden on small screens, simplified) -->
+<aside class="w-full md:w-1/3 bg-surface-container-lowest/80 p-lg border-r border-outline-variant/20 flex flex-col justify-between hidden md:flex">
+<div>
+<div class="flex items-center space-x-sm mb-xl">
+<span class="material-symbols-outlined text-primary text-[32px]" style="font-variation-settings: 'FILL' 1;">terminal</span>
+<span class="font-headline-sm text-headline-sm font-bold tracking-tight text-on-surface">Omix Community</span>
+</div>
+<nav class="space-y-lg relative">
+<!-- Connecting line -->
+<div class="absolute left-[11px] top-4 bottom-4 w-px bg-outline-variant/30 z-0"></div>
+<!-- Step 1 -->
+<div class="flex items-start space-x-md relative z-10 opacity-50 cursor-pointer hover:opacity-100 transition-opacity" onclick="showStep(1)">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center mt-1 flex-shrink-0 step-indicator-active" id="dot-1">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-primary mb-1">STEP 1</p>
+<h3 class="font-body-md text-body-md font-semibold text-on-surface">Welcome</h3>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex items-start space-x-md relative z-10 cursor-pointer" onclick="showStep(2)">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center mt-1 flex-shrink-0" id="dot-2">
+<span class="w-2 h-2 rounded-full bg-primary hidden" id="inner-dot-2"></span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-1" id="label-2">STEP 2</p>
+<h3 class="font-body-md text-body-md font-semibold text-on-surface" id="title-2">Connect GitHub</h3>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="flex items-start space-x-md relative z-10 opacity-50 cursor-pointer hover:opacity-100 transition-opacity" onclick="showStep(3)">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center mt-1 flex-shrink-0" id="dot-3"></div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-1">STEP 3</p>
+<h3 class="font-body-md text-body-md font-semibold text-on-surface">Join Boardroom</h3>
+</div>
+</div>
+<!-- Step 4 -->
+<div class="flex items-start space-x-md relative z-10 opacity-50 cursor-pointer hover:opacity-100 transition-opacity" onclick="showStep(4)">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center mt-1 flex-shrink-0" id="dot-4"></div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-1">STEP 4</p>
+<h3 class="font-body-md text-body-md font-semibold text-on-surface">Notifications</h3>
+</div>
+</div>
+</nav>
+</div>
+<div class="mt-xl">
+<p class="font-code-md text-code-md text-on-surface-variant/60 flex items-center">
+<span class="material-symbols-outlined text-[16px] mr-2">encrypted</span> End-to-end encrypted
+                </p>
+</div>
+</aside>
+<!-- Mobile Header (Visible only on small screens) -->
+<header class="md:hidden flex items-center justify-between p-4 border-b border-outline-variant/30 bg-surface-container-lowest">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">terminal</span>
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Omix</span>
+</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant bg-surface-container px-3 py-1 rounded-full border border-outline-variant/30">
+<span id="mobile-step-indicator">2 / 4</span>
+</div>
+</header>
+<!-- Right Content Area: Dynamic Steps -->
+<section class="flex-1 p-lg md:p-xl flex flex-col relative overflow-y-auto no-scrollbar">
+<!-- Step 2: Connect GitHub (Active by default for demonstration) -->
+<div class="flex-1 flex flex-col justify-center max-w-lg mx-auto w-full animate-fade-in" id="step-content-2">
+<div class="mb-lg text-center md:text-left">
+<div class="w-16 h-16 rounded-xl bg-surface-container-high border border-outline-variant/50 flex items-center justify-center mb-md mx-auto md:mx-0 shadow-lg">
+<span class="material-symbols-outlined text-[32px] text-primary">integration_instructions</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-on-surface mb-sm">Sync your identity.</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Connect your GitHub account to instantly import your profile, SSH keys, and repository access for Omix workspaces.</p>
+</div>
+<div class="space-y-md mt-md">
+<!-- Primary Connect Button -->
+<button class="w-full bg-surface-container border border-outline-variant/50 hover:border-primary/50 hover:bg-surface-container-high transition-all rounded-lg p-4 flex items-center justify-between group focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
+<div class="flex items-center space-x-md">
+<div class="w-10 h-10 rounded-full bg-black flex items-center justify-center flex-shrink-0 shadow-inner">
+<!-- GitHub Logo SVG placeholder using material icon for simplicity, though actual GH logo would be better -->
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">code</span>
+</div>
+<div class="text-left">
+<h4 class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors">Connect GitHub</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Recommended for developers</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-transform group-hover:translate-x-1">arrow_forward</span>
+</button>
+<!-- Alternative Options (Collapsible or secondary) -->
+<div class="relative py-4">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-outline-variant/30"></div>
+</div>
+<div class="relative flex justify-center">
+<span class="bg-surface-container-lowest md:bg-transparent px-4 font-code-md text-code-md text-on-surface-variant text-[12px] uppercase">Or continue with</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-md">
+<button class="bg-surface-container border border-outline-variant/30 hover:bg-surface-container-high transition-colors rounded-lg py-3 px-4 flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined text-[20px]">mail</span>
+<span class="font-body-sm text-body-sm">Email</span>
+</button>
+<button class="bg-surface-container border border-outline-variant/30 hover:bg-surface-container-high transition-colors rounded-lg py-3 px-4 flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined text-[20px]">key</span>
+<span class="font-body-sm text-body-sm">SSO</span>
+</button>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="mt-auto pt-xl flex items-center justify-between">
+<button class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors">Skip for now</button>
+<button class="bg-primary text-on-primary font-label-caps text-label-caps px-6 py-3 rounded-lg hover:bg-primary-container hover:text-on-primary-container transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background flex items-center" onclick="showStep(3)">
+                        Continue <span class="material-symbols-outlined text-[16px] ml-2">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Placeholder for Step 3: Boardroom (Hidden) -->
+<div class="hidden flex-1 flex-col justify-center max-w-2xl mx-auto w-full" id="step-content-3">
+<!-- Content injected via JS below for demonstration -->
+</div>
+</section>
+</main>
+<script>
+        // Simple client-side routing/step logic for UI demonstration
+        function showStep(stepNumber) {
+            // Update active dot styling (simulated)
+            const dots = document.querySelectorAll('[id^="dot-"]');
+            dots.forEach(dot => {
+                dot.className = "w-6 h-6 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center mt-1 flex-shrink-0";
+                dot.innerHTML = '';
+            });
+
+            const currentDot = document.getElementById(`dot-${stepNumber}`);
+            if(currentDot) {
+                currentDot.className = "w-6 h-6 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center mt-1 flex-shrink-0 step-indicator-active";
+                currentDot.innerHTML = `<span class="w-2 h-2 rounded-full bg-on-primary-container"></span>`;
+            }
+
+            // Mark previous as complete
+            for(let i=1; i<stepNumber; i++) {
+                const prevDot = document.getElementById(`dot-${i}`);
+                if(prevDot) {
+                    prevDot.className = "w-6 h-6 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center mt-1 flex-shrink-0";
+                    prevDot.innerHTML = `<span class="material-symbols-outlined text-[14px]">check</span>`;
+                    prevDot.parentElement.classList.remove('opacity-50');
+                }
+            }
+
+            // Highlight text for current step
+            document.querySelectorAll('[id^="label-"]').forEach(el => el.className = "font-label-caps text-label-caps text-on-surface-variant mb-1");
+            document.querySelectorAll('[id^="title-"]').forEach(el => el.className = "font-body-md text-body-md text-on-surface-variant");
+            
+            const currentLabel = document.getElementById(`label-${stepNumber}`);
+            const currentTitle = document.getElementById(`title-${stepNumber}`);
+            if(currentLabel) currentLabel.className = "font-label-caps text-label-caps text-primary mb-1";
+            if(currentTitle) currentTitle.className = "font-body-md text-body-md font-semibold text-on-surface";
+            
+            const stepParent = currentDot?.parentElement;
+            if(stepParent) stepParent.classList.remove('opacity-50');
+
+            // Update mobile indicator
+            document.getElementById('mobile-step-indicator').innerText = `${stepNumber} / 4`;
+
+            // Swap content (simulated)
+            document.getElementById('step-content-2').classList.add('hidden');
+            const step3 = document.getElementById('step-content-3');
+            
+            if(stepNumber === 3) {
+                step3.classList.remove('hidden');
+                step3.classList.add('flex');
+                step3.innerHTML = `
+                    <div class="mb-lg text-center md:text-left animate-fade-in">
+                        <div class="w-16 h-16 rounded-xl bg-surface-container-high border border-outline-variant/50 flex items-center justify-center mb-md mx-auto md:mx-0 shadow-lg">
+                            <span class="material-symbols-outlined text-[32px] text-tertiary">dashboard_customize</span>
+                        </div>
+                        <h1 class="font-display-lg text-display-lg text-on-surface mb-sm">Join a Boardroom.</h1>
+                        <p class="font-body-lg text-body-lg text-on-surface-variant">Select foundational channels to follow based on your tech stack.</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-md animate-fade-in">
+                        <!-- Channel Card 1 -->
+                        <div class="glass-panel p-4 rounded-lg cursor-pointer hover:border-tertiary-container transition-colors group relative overflow-hidden border-2 border-transparent">
+                            <div class="absolute top-2 right-2 w-5 h-5 rounded border border-outline-variant group-hover:border-tertiary flex items-center justify-center bg-surface">
+                                <span class="material-symbols-outlined text-[14px] text-tertiary opacity-0 group-hover:opacity-100 transition-opacity">check</span>
+                            </div>
+                            <div class="flex items-center space-x-3 mb-2">
+                                <span class="font-code-md text-code-md text-tertiary">#</span>
+                                <h4 class="font-body-md font-semibold text-on-surface">architecture</h4>
+                            </div>
+                            <p class="font-body-sm text-on-surface-variant/80">System design, patterns, and infrastructure scaling discussions.</p>
+                        </div>
+
+                         <!-- Channel Card 2 -->
+                        <div class="glass-panel p-4 rounded-lg cursor-pointer border-2 border-tertiary bg-tertiary/5 transition-colors group relative overflow-hidden">
+                            <div class="absolute top-2 right-2 w-5 h-5 rounded border border-tertiary flex items-center justify-center bg-tertiary text-on-tertiary">
+                                <span class="material-symbols-outlined text-[14px]">check</span>
+                            </div>
+                            <div class="flex items-center space-x-3 mb-2">
+                                <span class="font-code-md text-code-md text-tertiary">#</span>
+                                <h4 class="font-body-md font-semibold text-on-surface">rust-lang</h4>
+                            </div>
+                            <p class="font-body-sm text-on-surface-variant/80">Memory safety without garbage collection. Cargo, crates, & lifetimes.</p>
+                        </div>
+                    </div>
+
+                     <div class="mt-auto pt-xl flex items-center justify-between animate-fade-in">
+                        <button class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" onclick="showStep(2)">Back</button>
+                        <button class="bg-primary text-on-primary font-label-caps text-label-caps px-6 py-3 rounded-lg hover:bg-primary-container hover:text-on-primary-container transition-colors flex items-center">
+                            Continue <span class="material-symbols-outlined text-[16px] ml-2">chevron_right</span>
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize UI state
+        showStep(2);
+    </script>
+</body></html>

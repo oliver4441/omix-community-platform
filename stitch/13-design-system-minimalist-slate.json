@@ -1,0 +1,107 @@
+{
+  "name": "assets/7cbba6ad20494b249af6f1a242a36a8a",
+  "designSystem": {
+    "displayName": "Minimalist Slate",
+    "styleGuidelines": "## Brand & Style\nThe **Minimalist Slate** variation is a refined, focused design system built for productivity and calm community management. It utilizes a **Modern Minimalist** approach with a \"Light-Dark\" palette—avoiding pure blacks in favor of deep, breathable grays.\n\nThe emotional response is one of clarity and professional trust. It features generous whitespace and subtle transitions, ensuring the content remains the primary focus.\n\n## Layout & Spacing\nThis system follows a **Fluid Content** model with an emphasis on whitespace. \n\n- **Breathing Room:** Increase standard margins by 1.5x compared to typical layouts. \n- **Alignment:** Center-aligned content for marketing sections; left-aligned for functional dashboards.\n- **Desktop:** Max-width of 1200px to prevent lines of text from becoming too long.\n\n## Elevation & Depth\nDepth is conveyed through **Tonal Layers** and **Soft Shadows**.\n\n- **Surfaces:** Use slightly lighter shades of Slate to indicate hierarchy. A card will be #1E293B against a background of #0F172A.\n- **Shadows:** Very soft, large-radius shadows (24px blur, 10% opacity black) are used to lift active modals and menus. \n- No borders are used for elevation; depth is created purely through color steps.\n\n## Components\n- **Buttons:** Primary buttons use a solid Emerald fill. Secondary buttons are \"Ghost\" style with a Slate-300 text color and no border until hover.\n- **Input Fields:** Filled style using a slightly lighter slate than the background. No border, only a 2px Emerald bottom-border on focus.\n- **Cards:** No borders. Background color is one step lighter than the page background.\n- **Lists:** Clean, borderless list items with generous vertical padding (16px+). \n- **Chips:** Highly rounded (pill-shaped) with low-contrast backgrounds (e.g., Emerald at 10% opacity with Emerald text).",
+    "theme": {
+      "colorMode": "DARK",
+      "font": "MANROPE",
+      "roundness": "ROUND_EIGHT",
+      "customColor": "#10b981",
+      "headlineFont": "MANROPE",
+      "bodyFont": "INTER",
+      "labelFont": "INTER",
+      "namedColors": {
+        "background": "#0b1326",
+        "error": "#ffb4ab",
+        "error_container": "#93000a",
+        "inverse_on_surface": "#283044",
+        "inverse_primary": "#006c49",
+        "inverse_surface": "#dae2fd",
+        "on_background": "#dae2fd",
+        "on_error": "#690005",
+        "on_error_container": "#ffdad6",
+        "on_primary": "#003824",
+        "on_primary_container": "#00422b",
+        "on_primary_fixed": "#002113",
+        "on_primary_fixed_variant": "#005236",
+        "on_secondary": "#213145",
+        "on_secondary_container": "#a9bad3",
+        "on_secondary_fixed": "#0b1c30",
+        "on_secondary_fixed_variant": "#38485d",
+        "on_surface": "#dae2fd",
+        "on_surface_variant": "#bbcabf",
+        "on_tertiary": "#263143",
+        "on_tertiary_container": "#2e394c",
+        "on_tertiary_fixed": "#111c2d",
+        "on_tertiary_fixed_variant": "#3c475a",
+        "outline": "#86948a",
+        "outline_variant": "#3c4a42",
+        "primary": "#4edea3",
+        "primary_container": "#10b981",
+        "primary_fixed": "#6ffbbe",
+        "primary_fixed_dim": "#4edea3",
+        "secondary": "#b7c8e1",
+        "secondary_container": "#3a4a5f",
+        "secondary_fixed": "#d3e4fe",
+        "secondary_fixed_dim": "#b7c8e1",
+        "surface": "#0b1326",
+        "surface_bright": "#31394d",
+        "surface_container": "#171f33",
+        "surface_container_high": "#222a3d",
+        "surface_container_highest": "#2d3449",
+        "surface_container_low": "#131b2e",
+        "surface_container_lowest": "#060e20",
+        "surface_dim": "#0b1326",
+        "surface_tint": "#4edea3",
+        "surface_variant": "#2d3449",
+        "tertiary": "#bcc7de",
+        "tertiary_container": "#98a3ba",
+        "tertiary_fixed": "#d8e3fb",
+        "tertiary_fixed_dim": "#bcc7de"
+      },
+      "designMd": "---\nname: Minimalist Slate\ncolors:\n  surface: '#0b1326'\n  surface-dim: '#0b1326'\n  surface-bright: '#31394d'\n  surface-container-lowest: '#060e20'\n  surface-container-low: '#131b2e'\n  surface-container: '#171f33'\n  surface-container-high: '#222a3d'\n  surface-container-highest: '#2d3449'\n  on-surface: '#dae2fd'\n  on-surface-variant: '#bbcabf'\n  inverse-surface: '#dae2fd'\n  inverse-on-surface: '#283044'\n  outline: '#86948a'\n  outline-variant: '#3c4a42'\n  surface-tint: '#4edea3'\n  primary: '#4edea3'\n  on-primary: '#003824'\n  primary-container: '#10b981'\n  on-primary-container: '#00422b'\n  inverse-primary: '#006c49'\n  secondary: '#b7c8e1'\n  on-secondary: '#213145'\n  secondary-container: '#3a4a5f'\n  on-secondary-container: '#a9bad3'\n  tertiary: '#bcc7de'\n  on-tertiary: '#263143'\n  tertiary-container: '#98a3ba'\n  on-tertiary-container: '#2e394c'\n  error: '#ffb4ab'\n  on-error: '#690005'\n  error-container: '#93000a'\n  on-error-container: '#ffdad6'\n  primary-fixed: '#6ffbbe'\n  primary-fixed-dim: '#4edea3'\n  on-primary-fixed: '#002113'\n  on-primary-fixed-variant: '#005236'\n  secondary-fixed: '#d3e4fe'\n  secondary-fixed-dim: '#b7c8e1'\n  on-secondary-fixed: '#0b1c30'\n  on-secondary-fixed-variant: '#38485d'\n  tertiary-fixed: '#d8e3fb'\n  tertiary-fixed-dim: '#bcc7de'\n  on-tertiary-fixed: '#111c2d'\n  on-tertiary-fixed-variant: '#3c475a'\n  background: '#0b1326'\n  on-background: '#dae2fd'\n  surface-variant: '#2d3449'\ntypography:\n  headline-lg:\n    fontFamily: Manrope\n    fontSize: 36px\n    fontWeight: '600'\n    lineHeight: 44px\n  headline-lg-mobile:\n    fontFamily: Manrope\n    fontSize: 28px\n    fontWeight: '600'\n    lineHeight: 36px\n  body-md:\n    fontFamily: Inter\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: 28px\n  label-md:\n    fontFamily: Inter\n    fontSize: 14px\n    fontWeight: '500'\n    lineHeight: 20px\nrounded:\n  sm: 0.25rem\n  DEFAULT: 0.5rem\n  md: 0.75rem\n  lg: 1rem\n  xl: 1.5rem\n  full: 9999px\nspacing:\n  section-gap: 4rem\n  element-gap: 1.5rem\n  container-padding: 2rem\n---\n\n## Brand & Style\nThe **Minimalist Slate** variation is a refined, focused design system built for productivity and calm community management. It utilizes a **Modern Minimalist** approach with a \"Light-Dark\" palette—avoiding pure blacks in favor of deep, breathable grays.\n\nThe emotional response is one of clarity and professional trust. It features generous whitespace and subtle transitions, ensuring the content remains the primary focus.\n\n## Colors\nThe palette is centered around **Slate** and **Emerald**.\n\n- **Primary (Emerald):** A calm, natural green used sparingly for meaningful interaction and success states.\n- **Secondary (Cool Gray):** Used for supporting text and non-critical icons to reduce visual noise.\n- **Surface Colors:** Built on a scale of deep slates (e.g., #0F172A to #1E293B) to provide a softer contrast than pure black.\n\n## Typography\nTypography is balanced and highly legible.\n\n- **Headlines:** **Manrope** provides a modern, slightly rounded geometric feel that adds a touch of personality without being distracting.\n- **Body & Labels:** **Inter** is used for its systematic, utilitarian performance. \n- Line heights are intentionally generous (1.6x to 1.75x) to improve readability and create an \"airy\" feel within a dark theme.\n\n## Layout & Spacing\nThis system follows a **Fluid Content** model with an emphasis on whitespace. \n\n- **Breathing Room:** Increase standard margins by 1.5x compared to typical layouts. \n- **Alignment:** Center-aligned content for marketing sections; left-aligned for functional dashboards.\n- **Desktop:** Max-width of 1200px to prevent lines of text from becoming too long.\n\n## Elevation & Depth\nDepth is conveyed through **Tonal Layers** and **Soft Shadows**.\n\n- **Surfaces:** Use slightly lighter shades of Slate to indicate hierarchy. A card will be #1E293B against a background of #0F172A.\n- **Shadows:** Very soft, large-radius shadows (24px blur, 10% opacity black) are used to lift active modals and menus. \n- No borders are used for elevation; depth is created purely through color steps.\n\n## Shapes\nShapes are **Rounded** and friendly.\n\n- Standard UI elements (buttons, inputs) use a 0.5rem radius.\n- Larger containers like cards use 1rem.\n- This softness offsets the professional tone of the Slate colors, making the system feel more approachable.\n\n## Components\n- **Buttons:** Primary buttons use a solid Emerald fill. Secondary buttons are \"Ghost\" style with a Slate-300 text color and no border until hover.\n- **Input Fields:** Filled style using a slightly lighter slate than the background. No border, only a 2px Emerald bottom-border on focus.\n- **Cards:** No borders. Background color is one step lighter than the page background.\n- **Lists:** Clean, borderless list items with generous vertical padding (16px+). \n- **Chips:** Highly rounded (pill-shaped) with low-contrast backgrounds (e.g., Emerald at 10% opacity with Emerald text).",
+      "colorVariant": "FIDELITY",
+      "overridePrimaryColor": "#10b981",
+      "overrideSecondaryColor": "#64748b",
+      "overrideTertiaryColor": "#1e293b",
+      "overrideNeutralColor": "#0f172a",
+      "spacingScale": 2,
+      "typography": {
+        "body-md": {
+          "fontFamily": "Inter",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "28px"
+        },
+        "headline-lg": {
+          "fontFamily": "Manrope",
+          "fontSize": "36px",
+          "fontWeight": "600",
+          "lineHeight": "44px"
+        },
+        "headline-lg-mobile": {
+          "fontFamily": "Manrope",
+          "fontSize": "28px",
+          "fontWeight": "600",
+          "lineHeight": "36px"
+        },
+        "label-md": {
+          "fontFamily": "Inter",
+          "fontSize": "14px",
+          "fontWeight": "500",
+          "lineHeight": "20px"
+        }
+      },
+      "spacing": {
+        "container-padding": "2rem",
+        "element-gap": "1.5rem",
+        "section-gap": "4rem"
+      },
+      "headlineFontFamily": "Manrope",
+      "bodyFontFamily": "Inter",
+      "labelFontFamily": "Inter"
+    }
+  },
+  "version": "1"
+}

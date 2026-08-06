@@ -1,3 +1,11 @@
+# Omix Community — Docs
+
+- **Deployment:** [`DEPLOY.md`](./DEPLOY.md) — full guide (Vercel + Cloudflare Workers + Supabase)
+- **Readiness:** [`DEPLOYMENT_READINESS.md`](./DEPLOYMENT_READINESS.md) — current checklist
+- **Workers:** [`CLOUDFLARE_WORKERS.md`](./CLOUDFLARE_WORKERS.md) — API layer details
+- **Build troubleshooting:** [`NEXT_BUILD_TROUBLESHOOTING.md`](./NEXT_BUILD_TROUBLESHOOTING.md)
+- **Constitution:** [`CONSTITUTION.md`](./CONSTITUTION.md) — engineering principles
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

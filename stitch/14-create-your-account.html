@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sign up - Omix Community</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface": "#0b1326",
+                        "on-primary-fixed-variant": "#5516be",
+                        "on-secondary": "#003731",
+                        "surface-container-highest": "#2d3449",
+                        "surface-container": "#171f33",
+                        "secondary-container": "#04b4a2",
+                        "surface-container-low": "#131b2e",
+                        "on-tertiary": "#620040",
+                        "surface-tint": "#d0bcff",
+                        "surface-container-high": "#222a3d",
+                        "on-secondary-fixed-variant": "#005048",
+                        "secondary-fixed": "#71f8e4",
+                        "outline": "#958ea0",
+                        "primary-fixed": "#e9ddff",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-container": "#e364a7",
+                        "inverse-surface": "#dae2fd",
+                        "tertiary": "#ffafd3",
+                        "outline-variant": "#494454",
+                        "on-tertiary-fixed-variant": "#85145a",
+                        "on-primary-container": "#340080",
+                        "background": "#0b1326",
+                        "secondary": "#4fdbc8",
+                        "error-container": "#93000a",
+                        "on-primary-fixed": "#23005c",
+                        "surface-bright": "#31394d",
+                        "primary-fixed-dim": "#d0bcff",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "on-surface": "#dae2fd",
+                        "primary": "#d0bcff",
+                        "surface-container-lowest": "#060e20",
+                        "on-secondary-fixed": "#00201c",
+                        "on-tertiary-container": "#560038",
+                        "surface-variant": "#2d3449",
+                        "on-secondary-container": "#003f38",
+                        "inverse-primary": "#6d3bd7",
+                        "tertiary-fixed": "#ffd8e7",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "surface-dim": "#0b1326",
+                        "on-primary": "#3c0091",
+                        "primary-container": "#a078ff",
+                        "on-tertiary-fixed": "#3d0026",
+                        "tertiary-fixed-dim": "#ffafd3",
+                        "on-background": "#dae2fd",
+                        "inverse-on-surface": "#283044",
+                        "on-surface-variant": "#cbc3d7"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "md": "16px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "gutter": "16px",
+                        "xl": "40px",
+                        "base": "4px",
+                        "sidebar_width": "280px",
+                        "xs": "4px"
+                    },
+                    fontFamily: {
+                        "body-md": ["Inter"],
+                        "code-md": ["JetBrains Mono"],
+                        "body-sm": ["Inter"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "label-caps": ["JetBrains Mono"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "code-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col items-center justify-center p-md relative overflow-hidden font-body-md text-body-md">
+<!-- Atmospheric Background Gradients -->
+<div class="fixed top-[-20%] left-[-10%] w-[60vw] h-[60vw] max-w-[800px] max-h-[800px] bg-primary-container/10 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="fixed bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] max-w-[600px] max-h-[600px] bg-secondary-container/10 rounded-full blur-[100px] pointer-events-none"></div>
+<!-- Main Signup Card (Glassmorphic) -->
+<main class="w-full max-w-[440px] z-10 bg-surface-container/60 backdrop-blur-xl border border-outline-variant/50 rounded-xl shadow-2xl overflow-hidden flex flex-col">
+<!-- Header -->
+<div class="p-lg md:p-xl flex flex-col items-center text-center border-b border-outline-variant/30">
+<h1 class="font-headline-md text-headline-md text-primary font-bold tracking-tight mb-xs">Omix Community</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Create an account to join the workspace.</p>
+</div>
+<!-- Content -->
+<div class="p-lg md:p-xl flex flex-col gap-lg">
+<!-- GitHub Auth Action -->
+<button class="w-full flex items-center justify-center gap-sm bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-caps text-label-caps p-md rounded-lg border border-outline-variant transition-colors group">
+<svg aria-hidden="true" class="w-5 h-5 fill-current opacity-90 group-hover:opacity-100 transition-opacity" viewbox="0 0 24 24">
+<path clip-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z" fill-rule="evenodd"></path>
+</svg>
+                Continue with GitHub
+            </button>
+<!-- Divider -->
+<div class="flex items-center gap-md">
+<div class="flex-1 h-[1px] bg-outline-variant/50"></div>
+<span class="font-body-sm text-body-sm text-on-surface-variant uppercase tracking-wider text-[10px]">Or</span>
+<div class="flex-1 h-[1px] bg-outline-variant/50"></div>
+</div>
+<!-- Email Signup Form -->
+<form class="flex flex-col gap-md" onsubmit="event.preventDefault();">
+<div class="flex flex-col gap-sm">
+<label class="font-body-sm text-body-sm text-on-surface" for="fullName">Full Name</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg p-sm md:p-md font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" id="fullName" placeholder="Jane Doe" type="text"/>
+</div>
+<div class="flex flex-col gap-sm">
+<label class="font-body-sm text-body-sm text-on-surface" for="email">Email Address</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg p-sm md:p-md font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" id="email" placeholder="name@example.com" type="email"/>
+</div>
+<div class="flex flex-col gap-sm">
+<label class="font-body-sm text-body-sm text-on-surface" for="password">Secure Password</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg p-sm md:p-md pr-xl font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" id="password" placeholder="••••••••" type="password"/>
+<button aria-label="Toggle password visibility" class="absolute right-sm top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface p-xs rounded focus:outline-none" type="button">
+<span class="material-symbols-outlined text-[20px]" data-icon="visibility">visibility</span>
+</button>
+</div>
+</div>
+<button class="w-full mt-sm bg-primary text-on-primary font-label-caps text-label-caps p-md rounded-lg hover:bg-primary-fixed-dim transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface" type="submit">
+                    Sign up with Email
+                </button>
+</form>
+</div>
+<!-- Footer Link -->
+<div class="p-md bg-surface-container-lowest border-t border-outline-variant/30 text-center">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                Already have an account? 
+                <a class="text-primary hover:text-primary-fixed-dim font-medium hover:underline transition-colors ml-xs" href="#">Log in</a>
+</p>
+</div>
+</main>
+</body></html>

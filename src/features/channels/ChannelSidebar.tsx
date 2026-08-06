@@ -1,5 +1,10 @@
 "use client";
 
+// Mutating the global Store singleton (src/lib/store.ts) from event handlers is
+// this app's established state pattern (Store + window events). The React
+// Compiler immutability rule doesn't apply to this architecture.
+/* eslint-disable react-hooks/immutability */
+
 import { useState, useEffect, useRef } from "react";
 import { Store, getUserColor } from "@/lib/store";
 import type { Channel, User, UserStats } from "@/lib/types";

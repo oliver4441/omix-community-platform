@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Omix Community - Developer Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800;900&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#5516be",
+                        "on-tertiary": "#620040",
+                        "primary-fixed": "#e9ddff",
+                        "outline": "#958ea0",
+                        "on-tertiary-container": "#560038",
+                        "on-primary-container": "#340080",
+                        "error-container": "#93000a",
+                        "surface-container-lowest": "#060e20",
+                        "error": "#ffb4ab",
+                        "outline-variant": "#494454",
+                        "on-surface-variant": "#cbc3d7",
+                        "tertiary-fixed": "#ffd8e7",
+                        "secondary-fixed-dim": "#4fdbc8",
+                        "surface-dim": "#0b1326",
+                        "surface-container-low": "#131b2e",
+                        "on-surface": "#dae2fd",
+                        "inverse-surface": "#dae2fd",
+                        "on-secondary-fixed-variant": "#005048",
+                        "tertiary-container": "#e364a7",
+                        "primary-container": "#a078ff",
+                        "on-secondary-container": "#003f38",
+                        "background": "#0b1326",
+                        "on-secondary-fixed": "#00201c",
+                        "surface-container-highest": "#2d3449",
+                        "secondary-fixed": "#71f8e4",
+                        "surface-variant": "#2d3449",
+                        "on-secondary": "#003731",
+                        "tertiary-fixed-dim": "#ffafd3",
+                        "secondary-container": "#04b4a2",
+                        "primary": "#d0bcff",
+                        "on-tertiary-fixed-variant": "#85145a",
+                        "surface": "#0b1326",
+                        "on-tertiary-fixed": "#3d0026",
+                        "on-primary": "#3c0091",
+                        "on-error": "#690005",
+                        "tertiary": "#ffafd3",
+                        "primary-fixed-dim": "#d0bcff",
+                        "surface-container-high": "#222a3d",
+                        "surface-bright": "#31394d",
+                        "surface-container": "#171f33",
+                        "inverse-on-surface": "#283044",
+                        "surface-tint": "#d0bcff",
+                        "secondary": "#4fdbc8",
+                        "on-error-container": "#ffdad6",
+                        "on-background": "#dae2fd",
+                        "on-primary-fixed": "#23005c",
+                        "inverse-primary": "#6d3bd7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "base": "4px",
+                        "md": "16px",
+                        "xl": "40px",
+                        "sidebar_width": "280px",
+                        "sm": "8px",
+                        "gutter": "16px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "label-caps": ["JetBrains Mono"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "code-md": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "code-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .github-calendar-day { width: 12px; height: 12px; border-radius: 2px; }
+        .lvl-0 { background-color: rgba(255, 255, 255, 0.05); }
+        .lvl-1 { background-color: rgba(139, 92, 246, 0.2); }
+        .lvl-2 { background-color: rgba(139, 92, 246, 0.4); }
+        .lvl-3 { background-color: rgba(139, 92, 246, 0.6); }
+        .lvl-4 { background-color: rgba(139, 92, 246, 0.8); }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md h-screen overflow-hidden flex">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-sidebar_width flex flex-col py-md space-y-base bg-surface-container-lowest dark:bg-surface-container-lowest border-r border-outline-variant/20 hidden md:flex z-50">
+<div class="px-md pb-lg">
+<h1 class="font-headline-sm text-headline-sm font-black text-on-surface">Omix Community</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase mt-1">Developer Hub</p>
+</div>
+<div class="px-md mb-md">
+<button class="w-full bg-primary hover:bg-primary-fixed-dim text-on-primary font-body-sm font-medium py-2 rounded-lg flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+                New Workspace
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto px-sm space-y-1">
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-variant/50 transition-all rounded-r-full cursor-pointer active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">grid_view</span>
+<span class="font-body-md text-body-md">Workspaces</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-variant/50 transition-all rounded-r-full cursor-pointer active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">forum</span>
+<span class="font-body-md text-body-md">Threads</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-variant/50 transition-all rounded-r-full cursor-pointer active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">chat</span>
+<span class="font-body-md text-body-md">Direct Messages</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-variant/50 transition-all rounded-r-full cursor-pointer active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">dashboard_customize</span>
+<span class="font-body-md text-body-md">Boardroom</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-variant/50 transition-all rounded-r-full cursor-pointer active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">code</span>
+<span class="font-body-md text-body-md">Pairing</span>
+</a>
+</div>
+<div class="mt-auto px-sm pt-4 border-t border-outline-variant/20 space-y-1">
+<a class="flex items-center gap-3 border-l-2 border-primary bg-primary-container/10 text-on-primary-container font-bold px-4 py-2 rounded-r-full transition-all" href="#">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1; font-size: 20px;">settings</span>
+<span class="font-body-md text-body-md text-primary">Profile</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-variant/50 transition-all rounded-r-full cursor-pointer active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">help</span>
+<span class="font-body-md text-body-md">Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col md:ml-sidebar_width h-full relative">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-md h-16 sticky top-0 z-40 bg-surface-container-low dark:bg-surface-container-low border-b border-outline-variant/30 backdrop-blur-md bg-surface-container-low/80">
+<div class="flex-1 md:hidden">
+<span class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary">Omix Community</span>
+</div>
+<div class="flex-1 hidden md:flex items-center max-w-md mx-auto">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="w-full bg-surface-container border border-outline-variant/50 rounded-full py-1.5 pl-9 pr-4 text-body-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-outline-variant" placeholder="Search commands, threads, users..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-primary-container/20 transition-colors rounded-full cursor-pointer active:scale-95">
+<span class="material-symbols-outlined">videocam</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-primary-container/20 transition-colors rounded-full cursor-pointer active:scale-95">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-primary-container/20 transition-colors rounded-full cursor-pointer active:scale-95">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+<img alt="User profile and status" class="w-8 h-8 rounded-full border border-outline-variant ml-2 object-cover" data-alt="A small, circular avatar portrait of a modern developer, brightly lit in a dark moody studio setting. The developer looks focused and professional. Deep blues and electric violet accents subtly illuminate the edge of the face, reinforcing a high-tech hacker aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDswdr4Iil0qEj1neOFQCtQuaygT1-Uu8xU3C_7fRdCENMDYjDgqPhQGpq4GGYrmQMzGCo42-GZasFu8lpDyM4Rdp8wejCD46L_E1B4ofYrQ453OO9bzW8inussfS33CCAuz9ATkk45pAXUB3ywEQONepPBJKmtoifhrB50FL9HSalLqqwtgz2JyLtxqNYU1gddwtj3IKcW5bpPHBr7UevelbgRdlAcu_1dRr2ctDzFxWlbWo6qX6hNZA"/>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto p-gutter custom-scrollbar">
+<div class="max-w-7xl mx-auto">
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Left Column: Profile Card (Col Span 3) -->
+<div class="lg:col-span-3 space-y-gutter">
+<div class="glass-card rounded-xl p-md flex flex-col items-center text-center">
+<div class="relative mb-4">
+<img class="w-32 h-32 rounded-full object-cover border-2 border-primary shadow-[0_0_15px_rgba(160,120,255,0.3)]" data-alt="A high-quality, professional headshot of a software engineer named Alex Chen. The lighting is cinematic with a distinct neon violet rim light on one side and a soft cyan fill on the other, set against a completely dark, featureless background. The subject wears a minimalist dark hoodie, looking directly at the camera with quiet confidence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxK9BkVjiu9EWfBXqOcXfuREArk319qWEcU3MzKYjvuEedRUJ3-4re9jImU07AoKGZuB4ybn-RvW8FQHuR6Ukzq5OiODlIye5j-3CYpg0D__95j4jfPoc4BXgnQzWnSEuquBsZNMcSuYrAMem2O3UB3kVi-69yVSkPM4rJ0DFwVDeJ0r35j8ybbPKjixpoc9jCqhcGSp76Ep9Ll6bfeT4Z07A1xGGhDcx1Sy8SIQxM2bx93kYoDmrpIA"/>
+<div class="absolute bottom-1 right-1 w-4 h-4 bg-secondary rounded-full border-2 border-surface-container-low" title="Online"></div>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-1">Alex Chen</h2>
+<p class="font-label-caps text-label-caps text-primary mb-3">@alexc_dev</p>
+<div class="flex gap-2 mb-4 flex-wrap justify-center">
+<span class="bg-surface-container px-2 py-1 rounded text-xs text-on-surface-variant border border-outline-variant/30 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">military_tech</span>
+                                    Core Contributor
+                                </span>
+<span class="bg-surface-container px-2 py-1 rounded text-xs text-on-surface-variant border border-outline-variant/30 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">code</span>
+                                    Frontend Lead
+                                </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6 leading-relaxed">
+                                Building resilient UI systems. Passionate about WebGL, performance optimization, and open-source tooling.
+                            </p>
+<div class="w-full flex justify-between px-4 py-3 bg-surface-container-lowest rounded-lg border border-outline-variant/20 mb-6">
+<div class="text-center">
+<div class="font-headline-sm text-headline-sm text-on-surface">1.2k</div>
+<div class="font-label-caps text-label-caps text-outline-variant text-[10px]">Followers</div>
+</div>
+<div class="w-px bg-outline-variant/30"></div>
+<div class="text-center">
+<div class="font-headline-sm text-headline-sm text-on-surface">340</div>
+<div class="font-label-caps text-label-caps text-outline-variant text-[10px]">Following</div>
+</div>
+<div class="w-px bg-outline-variant/30"></div>
+<div class="text-center">
+<div class="font-headline-sm text-headline-sm text-on-surface">8.4k</div>
+<div class="font-label-caps text-label-caps text-outline-variant text-[10px]">Points</div>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary-fixed-dim text-on-primary font-body-sm font-medium py-2 rounded-lg transition-colors mb-2">
+                                Follow
+                            </button>
+<button class="w-full bg-transparent border border-secondary text-secondary hover:bg-secondary/10 font-body-sm font-medium py-2 rounded-lg transition-colors">
+                                Message
+                            </button>
+</div>
+</div>
+<!-- Center Column: GitHub Integration (Col Span 6) -->
+<div class="lg:col-span-6 space-y-gutter">
+<!-- GitHub Stats Banner -->
+<div class="glass-card rounded-xl p-md">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-sm text-body-lg font-semibold flex items-center gap-2">
+<svg class="w-5 h-5 fill-current" viewbox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"></path></svg>
+                                    GitHub Overview
+                                </h3>
+<span class="font-code-md text-code-md text-outline-variant">alexc_dev</span>
+</div>
+<div class="grid grid-cols-3 gap-4 mb-6">
+<div class="bg-surface-container-lowest p-3 rounded-lg border border-outline-variant/20">
+<div class="font-label-caps text-label-caps text-outline-variant mb-1">Commits (YTD)</div>
+<div class="font-headline-sm text-headline-sm text-primary">2,451</div>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-lg border border-outline-variant/20">
+<div class="font-label-caps text-label-caps text-outline-variant mb-1">PRs Merged</div>
+<div class="font-headline-sm text-headline-sm text-secondary">342</div>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-lg border border-outline-variant/20">
+<div class="font-label-caps text-label-caps text-outline-variant mb-1">Issues Resolved</div>
+<div class="font-headline-sm text-headline-sm text-on-surface">128</div>
+</div>
+</div>
+<!-- Contribution Graph Mockup -->
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/20 overflow-hidden">
+<div class="font-label-caps text-label-caps text-outline-variant mb-2">Activity Graph</div>
+<div class="flex gap-1 flex-wrap w-full h-[84px] opacity-80" id="contrib-graph">
+<!-- Populated by JS -->
+</div>
+<div class="flex justify-between items-center mt-2 text-xs text-outline-variant">
+<span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span>
+<div class="flex items-center gap-1">
+<span>Less</span>
+<div class="w-3 h-3 lvl-0 rounded-sm"></div>
+<div class="w-3 h-3 lvl-1 rounded-sm"></div>
+<div class="w-3 h-3 lvl-2 rounded-sm"></div>
+<div class="w-3 h-3 lvl-3 rounded-sm"></div>
+<div class="w-3 h-3 lvl-4 rounded-sm"></div>
+<span>More</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Featured Repos -->
+<div class="glass-card rounded-xl p-md">
+<h3 class="font-headline-sm text-body-lg font-semibold mb-4">Skills &amp; Expertise</h3>
+<div class="flex flex-wrap gap-2">
+<span class="bg-primary-container/10 text-primary border border-primary/20 px-3 py-1 rounded-full text-xs font-medium">Rust</span>
+<span class="bg-primary-container/10 text-primary border border-primary/20 px-3 py-1 rounded-full text-xs font-medium">TypeScript</span>
+<span class="bg-primary-container/10 text-primary border border-primary/20 px-3 py-1 rounded-full text-xs font-medium">React</span>
+<span class="bg-primary-container/10 text-primary border border-primary/20 px-3 py-1 rounded-full text-xs font-medium">Node.js</span>
+<span class="bg-primary-container/10 text-primary border border-primary/20 px-3 py-1 rounded-full text-xs font-medium">Distributed Systems</span>
+<span class="bg-primary-container/10 text-primary border border-primary/20 px-3 py-1 rounded-full text-xs font-medium">PostgreSQL</span>
+</div>
+</div><div class="glass-card rounded-xl p-md">
+<h3 class="font-headline-sm text-body-lg font-semibold mb-4">Featured Repositories</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Repo 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/30 hover:border-primary/50 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<a class="font-body-md text-primary font-medium group-hover:underline" href="#">omix-ui-core</a>
+<span class="border border-outline-variant/30 text-outline-variant text-[10px] px-1.5 py-0.5 rounded-full uppercase">Public</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4 h-10 line-clamp-2">
+                                        The core UI component library for Omix, built with React and Tailwind CSS.
+                                    </p>
+<div class="flex items-center gap-4 text-xs text-outline-variant font-code-md">
+<div class="flex items-center gap-1">
+<span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span> TypeScript
+                                        </div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">star</span> 1.2k
+                                        </div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">fork_right</span> 243
+                                        </div>
+</div>
+</div>
+<!-- Repo 2 -->
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant/30 hover:border-primary/50 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<a class="font-body-md text-primary font-medium group-hover:underline" href="#">nexus-router</a>
+<span class="border border-outline-variant/30 text-outline-variant text-[10px] px-1.5 py-0.5 rounded-full uppercase">Public</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4 h-10 line-clamp-2">
+                                        A high-performance edge routing solution for micro-frontends.
+                                    </p>
+<div class="flex items-center gap-4 text-xs text-outline-variant font-code-md">
+<div class="flex items-center gap-1">
+<span class="w-2.5 h-2.5 rounded-full bg-yellow-400"></span> Rust
+                                        </div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">star</span> 892
+                                        </div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">fork_right</span> 67
+                                        </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Community Activity (Col Span 3) -->
+<div class="lg:col-span-3 space-y-gutter">
+<div class="glass-card rounded-xl p-md">
+<h3 class="font-headline-sm text-body-lg font-semibold mb-4 border-b border-outline-variant/20 pb-2">Recent Activity</h3>
+<div class="space-y-4 relative before:absolute before:inset-y-0 before:left-2.5 before:w-px before:bg-outline-variant/30 pl-8">
+<!-- Activity Item -->
+<div class="relative">
+<div class="absolute -left-[1.95rem] w-5 h-5 bg-surface-container-lowest border border-primary rounded-full flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[12px] text-primary">merge</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface">
+                                        Merged PR <a class="text-primary hover:underline font-code-md" href="#">#452</a> in omix-ui-core
+                                    </div>
+<div class="font-label-caps text-label-caps text-outline-variant text-[10px] mt-1">2 hours ago</div>
+</div>
+<!-- Activity Item -->
+<div class="relative">
+<div class="absolute -left-[1.95rem] w-5 h-5 bg-surface-container-lowest border border-secondary rounded-full flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[12px] text-secondary">forum</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface">
+                                        Replied in thread <a class="text-secondary hover:underline" href="#">State Management Arch</a>
+</div>
+<div class="font-label-caps text-label-caps text-outline-variant text-[10px] mt-1">5 hours ago</div>
+</div>
+<!-- Activity Item -->
+<div class="relative">
+<div class="absolute -left-[1.95rem] w-5 h-5 bg-surface-container-lowest border border-outline-variant rounded-full flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[12px] text-on-surface-variant">upload_file</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface">
+                                        Uploaded <span class="font-code-md text-outline-variant bg-surface-container px-1 rounded">design_tokens.json</span>
+</div>
+<div class="font-label-caps text-label-caps text-outline-variant text-[10px] mt-1">Yesterday</div>
+</div>
+</div>
+</div>
+<!-- Current Stack -->
+<div class="glass-card rounded-xl p-md">
+<h3 class="font-headline-sm text-body-lg font-semibold mb-3">Top Languages</h3>
+<div class="space-y-3">
+<div>
+<div class="flex justify-between text-xs mb-1">
+<span class="font-code-md text-on-surface">TypeScript</span>
+<span class="text-outline-variant">65%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-lowest rounded-full overflow-hidden">
+<div class="h-full bg-[#3178c6] rounded-full" style="width: 65%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-xs mb-1">
+<span class="font-code-md text-on-surface">Rust</span>
+<span class="text-outline-variant">20%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-lowest rounded-full overflow-hidden">
+<div class="h-full bg-[#dea584] rounded-full" style="width: 20%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-xs mb-1">
+<span class="font-code-md text-on-surface">CSS / Tailwind</span>
+<span class="text-outline-variant">15%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-lowest rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 15%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="h-24 md:h-12 w-full"></div> <!-- Spacer for scrolling -->
+</main>
+</div>
+<script>
+        // Generate random github contribution graph
+        document.addEventListener('DOMContentLoaded', () => {
+            const graphContainer = document.getElementById('contrib-graph');
+            const cols = 28;
+            const rows = 6;
+            
+            for (let i = 0; i < cols * rows; i++) {
+                const day = document.createElement('div');
+                day.className = 'github-calendar-day';
+                
+                // Randomize activity level
+                const rand = Math.random();
+                let level = 'lvl-0';
+                if (rand > 0.9) level = 'lvl-4';
+                else if (rand > 0.75) level = 'lvl-3';
+                else if (rand > 0.6) level = 'lvl-2';
+                else if (rand > 0.4) level = 'lvl-1';
+                
+                day.classList.add(level);
+                graphContainer.appendChild(day);
+            }
+        });
+    </script>
+</body></html>

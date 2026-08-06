@@ -42,6 +42,11 @@ export {
   VideoOff,
   Phone,
   PhoneOff,
+  PhoneCall,
+  PhoneIncoming,
+  PhoneMissed,
+  Monitor,
+  History,
   // Status
   Check,
   CheckCheck,
@@ -93,3 +98,6 @@ export {
   Github,
   Twitter,
 } from "lucide-react";
+
+// Material Symbols icon component (JSX lives in ./Mso.tsx so tsc accepts it)
+export { Mso } from "./Mso";

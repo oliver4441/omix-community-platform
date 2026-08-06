@@ -5,6 +5,8 @@ import { ImageLightbox } from './ImageLightbox';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { Store } from '@/lib/store';
+import { useToast } from '@/components/ui/Toast';
+import { initiateCall, setActiveChannel } from '@/lib/calls';
 import type { Message, User, TypingUser } from '@/lib/types';
 import {
   Hash,
@@ -14,6 +16,8 @@ import {
   Search,
   ChevronLeft,
   Edit3,
+  Phone,
+  Video,
 } from '@/components/ui/icons';
 
 const ThreadPanel = lazy(() =>
@@ -108,6 +112,7 @@ export function ChatPane({
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [threadMessage, setThreadMessage] = useState<Message | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const { toast } = useToast();
   const prevMsgCount = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -133,6 +138,8 @@ export function ChatPane({
     const channelId = Store.currentChannelId;
     if (!channelId) return;
 
+    setActiveChannel(channelId);
+
     const unsubMsg = Store.subscribeMessages(channelId, (_, data) => {
       const msgs = data as Message[];
       // Play notification sound for new messages (not own)
@@ -156,6 +163,7 @@ export function ChatPane({
     const handler = (e: CustomEvent) => {
       Store.cleanup();
       Store.markChannelRead(e.detail);
+      setActiveChannel(e.detail);
       Store.subscribeMessages(e.detail, (_, data) => {
         const msgs = data as Message[];
         setMessages(msgs);
@@ -173,6 +181,7 @@ export function ChatPane({
     };
     window.addEventListener('channelChanged', handler as EventListener);
     return () => {
+      setActiveChannel(null);
       unsubMsg();
       unsubTyping();
       unsubPins();
@@ -203,6 +212,34 @@ export function ChatPane({
       setReplyTo(null);
     },
     [input, replyTo, displayName]
+  );
+
+  const startCall = useCallback(
+    (video: boolean) => {
+      const channelId = Store.currentChannelId;
+      if (Store.currentChannelType === 'dm') {
+        const dm = Store.dmChannels.find((d) => d.id === channelId);
+        const partnerId = dm?.participants.find((p) => p !== Store.sessionId);
+        if (!partnerId) {
+          toast('No one to call in this DM', 'info');
+          return;
+        }
+        const partner = Store.onlineUsers.find((u) => u.id === partnerId);
+        initiateCall(
+          partnerId,
+          partner?.name || dm?.participantNames?.[partnerId] || 'Guest',
+          video
+        );
+      } else {
+        const partner = Store.onlineUsers.find((u) => u.id !== Store.sessionId);
+        if (!partner) {
+          toast('No one else is online right now', 'info');
+          return;
+        }
+        initiateCall(partner.id, partner.name, video);
+      }
+    },
+    [toast]
   );
 
   const handleInput = useCallback(
@@ -359,6 +396,28 @@ export function ChatPane({
               <span>{pins.length}</span>
             </div>
           )}
+          <button
+            onClick={() => startCall(false)}
+            className="p-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors"
+            aria-label="Start voice call"
+            title="Start voice call"
+          >
+            <Phone
+              size={18}
+              className="text-[var(--color-txt-muted)] hover:text-[var(--color-txt)] transition-colors"
+            />
+          </button>
+          <button
+            onClick={() => startCall(true)}
+            className="p-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors"
+            aria-label="Start video call"
+            title="Start video call"
+          >
+            <Video
+              size={18}
+              className="text-[var(--color-txt-muted)] hover:text-[var(--color-txt)] transition-colors"
+            />
+          </button>
           <button
             onClick={() => setShowSearch(true)}
             className="p-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors"

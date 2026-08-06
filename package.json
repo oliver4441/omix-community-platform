@@ -6,9 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "workers:dev": "wrangler dev -c workers/omix-api/wrangler.toml",
+    "workers:deploy": "wrangler deploy -c workers/omix-api/wrangler.toml && wrangler deploy -c workers/omix-cron/wrangler.toml",
+    "workers:typecheck": "tsc -p workers/tsconfig.json"
   },
   "dependencies": {
+    "@ably/chat": "^1.4.0",
+    "@jitsi/react-sdk": "^1.4.4",
     "@supabase/supabase-js": "^2.110.8",
     "firebase": "^8.10.1",
     "lucide-react": "^0.516.0",
@@ -17,6 +22,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260801.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -24,6 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "^16.2.11",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.11.0"
   }
 }

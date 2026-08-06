@@ -12,7 +12,7 @@ export function ImageLightbox({
 }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const dragging = useRef(false);
+  const [dragging, setDragging] = useState(false);
   const lastPos = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -36,13 +36,13 @@ export function ImageLightbox({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (zoom > 1) {
-      dragging.current = true;
+      setDragging(true);
       lastPos.current = { x: e.clientX, y: e.clientY };
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (dragging.current) {
+    if (dragging) {
       const dx = e.clientX - lastPos.current.x;
       const dy = e.clientY - lastPos.current.y;
       lastPos.current = { x: e.clientX, y: e.clientY };
@@ -51,7 +51,7 @@ export function ImageLightbox({
   };
 
   const handleMouseUp = () => {
-    dragging.current = false;
+    setDragging(false);
   };
 
   const handleDownload = async () => {
@@ -132,7 +132,7 @@ export function ImageLightbox({
         className="max-w-[95vw] max-h-[90vh] object-contain select-none"
         style={{
           transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
-          transition: dragging.current ? 'none' : 'transform 0.2s ease',
+          transition: dragging ? 'none' : 'transform 0.2s ease',
           cursor: zoom > 1 ? 'grab' : 'default',
         }}
         onMouseDown={handleMouseDown}

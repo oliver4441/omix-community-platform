@@ -1,0 +1,10 @@
+name = "omix-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# Non-secret configuration. Real secrets live in Cloudflare (wrangler secret put):
+#   ABLY_API_KEY              — Ably API key (moved out of the client bundle)
+#   SUPABASE_URL              — https://<project>.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY — service-role key (NEVER ship this to the client)
+[vars]
+CORS_ORIGIN = "*"

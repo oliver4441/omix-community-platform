@@ -1,4 +1,7 @@
 import { supabase, toCamel, toSnake, getPublicUrl } from "@/lib/supabase";
+import { getRoom, getRoomId, isAblyConnected, onAblyConnectionState } from "@/lib/ably";
+import { verifyAdminPasswordViaApi, queuePushNotification } from "@/lib/api";
+import type { Message as AblyMessage, JsonObject } from "@ably/chat";
 import type {
   Message,
   Channel,
@@ -8,6 +11,7 @@ import type {
   TypingUser,
   DMChannel,
   UserStats,
+  CallLogEntry,
 } from "@/lib/types";
 
 const FALLBACK_SESSION_ID = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
@@ -47,6 +51,28 @@ function toDate(val: unknown): Date {
   if (typeof val === "string" || typeof val === "number") return new Date(val);
   // Supabase returns ISO strings — handle that
   return new Date(String(val));
+}
+
+function ablyToMessage(chat: AblyMessage): Message {
+  const md = (chat.metadata || {}) as Record<string, unknown>;
+  return {
+    id: (md.osId as string) || chat.serial,
+    channelId: (md.channelId as string) || "",
+    author: (md.author as string) || "Anonymous",
+    authorId: (md.authorId as string) || "",
+    sessionId: chat.clientId || (md.sessionId as string) || "",
+    text: chat.text || "",
+    color: (md.color as string) || "#8B5CF6",
+    timestamp: chat.timestamp || new Date(),
+    reactions: {},
+    fileUrl: (md.fileUrl as string) || undefined,
+    fileType: (md.fileType as string) || undefined,
+    fileName: (md.fileName as string) || undefined,
+    fileSize: (md.fileSize as number) || undefined,
+    replyTo: md.replyTo as Message["replyTo"],
+    threadId: (md.threadId as string) || undefined,
+    mentions: (md.mentions as string[]) || undefined,
+  };
 }
 
 type Listener = () => void;
@@ -258,6 +284,11 @@ export const Store = {
 
   // === ADMIN ===
   async verifyAdminPassword(password: string): Promise<boolean> {
+    // Prefer the secure worker endpoint (service role); fall back to the legacy
+    // client-side check when the omix-api worker isn't deployed yet.
+    const viaApi = await verifyAdminPasswordViaApi(password);
+    if (viaApi !== null) return viaApi;
+
     const { data } = await supabase
       .from("config")
       .select("data")
@@ -615,7 +646,31 @@ export const Store = {
         }
       });
 
-    const unsub = () => supabase.removeChannel(channel);
+    const roomId = getRoomId(channelId, state.dmChannelIds.has(channelId));
+    let unsubAbly = () => {};
+    if (typeof window !== "undefined") {
+      getRoom(roomId)
+        .then((room) => {
+          const sub = room.messages.subscribe((event) => {
+            if (event.type !== "message.created") return;
+            const msg = ablyToMessage(event.message);
+            if (msg.id && state.messages.some((m) => m.id === msg.id)) return;
+            if (msg.channelId && msg.channelId !== channelId) return;
+            state.messages = [...state.messages, msg].sort(
+              (a, b) => toDate(a.timestamp).getTime() - toDate(b.timestamp).getTime()
+            );
+            notify("messages", state.messages);
+            cb("messages", state.messages);
+          });
+          unsubAbly = () => sub.unsubscribe();
+        })
+        .catch(() => {});
+    }
+
+    const unsub = () => {
+      supabase.removeChannel(channel);
+      unsubAbly();
+    };
     state.listeners.push(unsub);
     return unsub;
   },
@@ -771,8 +826,16 @@ export const Store = {
     if (opts.mentions) msg.mentions = opts.mentions;
     if (opts.threadId) msg.thread_id = opts.threadId;
 
-    const { error } = await supabase.from("messages").insert(msg);
+    const { data: inserted, error } = await supabase
+      .from("messages")
+      .insert(msg)
+      .select("id")
+      .single();
     if (error) throw error;
+
+    if (inserted?.id) {
+      this.publishMessage(channelId, { ...msg, id: inserted.id });
+    }
 
     // Update DM channel last message
     if (state.dmChannelIds.has(channelId)) {
@@ -830,6 +893,37 @@ export const Store = {
         /* fail silently */
       }
     }
+  },
+
+  publishMessage(channelId: string, row: Record<string, unknown>): void {
+    if (typeof window === "undefined") return;
+    const roomId = getRoomId(channelId, state.dmChannelIds.has(channelId));
+    const metadata: Record<string, unknown> = {
+      osId: row.id,
+      channelId,
+      author: row.author,
+      authorId: row.author_id,
+      sessionId: row.session_id,
+      color: row.color,
+      timestamp: row.timestamp,
+      fileUrl: row.file_url,
+      fileType: row.file_type,
+      fileName: row.file_name,
+      fileSize: row.file_size,
+      replyTo: row.reply_to,
+      threadId: row.thread_id,
+      mentions: row.mentions,
+    };
+    getRoom(roomId)
+      .then((room) =>
+        room.messages.send({
+          text: (row.text as string) || "",
+          metadata: metadata as unknown as JsonObject,
+        })
+      )
+      .catch((err) => {
+        console.warn("[ably] publish failed — relying on Supabase realtime", err);
+      });
   },
 
   async editMessage(messageId: string, newText: string): Promise<void> {
@@ -972,6 +1066,13 @@ export const Store = {
   // === TYPING ===
   startTyping(channelId: string, displayName: string): void {
     if (!channelId || !displayName) return;
+    if (isAblyConnected()) {
+      const roomId = getRoomId(channelId, state.dmChannelIds.has(channelId));
+      getRoom(roomId)
+        .then((room) => room.typing.keystroke())
+        .catch(() => {});
+      return;
+    }
     const sessionId = getSessionId();
     const docId = `${channelId}_${sessionId}`;
 
@@ -985,7 +1086,6 @@ export const Store = {
         created_at: new Date().toISOString(),
       })
       .then(() => {
-        // Auto-delete after timeout
         setTimeout(() => {
           supabase.from("typing").delete().eq("id", docId);
         }, TYPING_TIMEOUT);
@@ -994,6 +1094,13 @@ export const Store = {
 
   stopTyping(channelId: string): void {
     if (!channelId) return;
+    if (isAblyConnected()) {
+      const roomId = getRoomId(channelId, state.dmChannelIds.has(channelId));
+      getRoom(roomId)
+        .then((room) => room.typing.stop())
+        .catch(() => {});
+      return;
+    }
     const docId = `${channelId}_${getSessionId()}`;
     supabase.from("typing").delete().eq("id", docId);
   },
@@ -1001,33 +1108,86 @@ export const Store = {
   subscribeTyping(channelId: string, cb: (users: TypingUser[]) => void) {
     if (!channelId) return () => {};
 
-    const channel = supabase
-      .channel(`typing-${channelId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "typing", filter: `channel_id=eq.${channelId}` },
-        async () => {
-          const { data } = await supabase
-            .from("typing")
-            .select("*")
-            .eq("channel_id", channelId);
+    const roomId = getRoomId(channelId, state.dmChannelIds.has(channelId));
+    let supabaseUnsub: (() => void) | null = null;
+    let ablyUnsub: (() => void) | null = null;
+    let disposed = false;
 
-          if (data) {
-            const users = data
-              .filter((u) => u.session_id !== getSessionId() && u.display_name)
-              .map((u) => ({
-                name: u.display_name,
-                sessionId: u.session_id,
-                channelId: u.channel_id,
-              }));
-            state.typingUsers = users;
-            cb(users);
+    const setupSupabase = () => {
+      if (supabaseUnsub || disposed) return;
+      const channel = supabase
+        .channel(`typing-${channelId}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "typing", filter: `channel_id=eq.${channelId}` },
+          async () => {
+            const { data } = await supabase
+              .from("typing")
+              .select("*")
+              .eq("channel_id", channelId);
+
+            if (data) {
+              const users = data
+                .filter((u) => u.session_id !== getSessionId() && u.display_name)
+                .map((u) => ({
+                  name: u.display_name,
+                  sessionId: u.session_id,
+                  channelId: u.channel_id,
+                }));
+              state.typingUsers = users;
+              cb(users);
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+      supabaseUnsub = () => supabase.removeChannel(channel);
+    };
 
-    const unsub = () => supabase.removeChannel(channel);
+    const setupAbly = () => {
+      if (ablyUnsub || disposed) return;
+      getRoom(roomId)
+        .then((room) => {
+          if (disposed) return;
+          const sub = room.typing.subscribe((event) => {
+            if (disposed) return;
+            const members = (event.currentTypers || []).filter(
+              (m) => m.clientId && m.clientId !== getSessionId()
+            );
+            Promise.all(
+              members.map(async (m) => {
+                let name = m.clientId;
+                try {
+                  const profile = await this.getProfile(m.clientId);
+                  if (profile?.name) name = profile.name;
+                } catch {}
+                return { name, sessionId: m.clientId, channelId } as TypingUser;
+              })
+            ).then((users) => {
+              state.typingUsers = users;
+              cb(users);
+            });
+          });
+          ablyUnsub = () => sub.unsubscribe();
+          if (supabaseUnsub) {
+            supabaseUnsub();
+            supabaseUnsub = null;
+          }
+        })
+        .catch(() => {});
+    };
+
+    setupSupabase();
+    if (typeof window !== "undefined") {
+      onAblyConnectionState((connected) => {
+        if (connected) setupAbly();
+      });
+    }
+
+    const unsub = () => {
+      disposed = true;
+      if (ablyUnsub) ablyUnsub();
+      if (supabaseUnsub) supabaseUnsub();
+    };
     state.typingListeners.push(unsub);
     return unsub;
   },
@@ -1040,6 +1200,7 @@ export const Store = {
   // === PRESENCE ===
   async setPresence(displayName: string): Promise<void> {
     const sessionId = getSessionId();
+    const color = getUserColor(displayName);
     const heartbeat = () =>
       supabase
         .from("presence")
@@ -1049,48 +1210,146 @@ export const Store = {
     await supabase.from("presence").upsert({
       session_id: sessionId,
       display_name: displayName,
-      color: getUserColor(displayName),
+      color,
       online: true,
       last_seen: new Date().toISOString(),
     });
 
     setInterval(heartbeat, 30000);
 
+    const enterAbly = () => {
+      getRoom("presence-main")
+        .then((room) => room.presence.enter({ name: displayName, color, online: true }))
+        .catch(() => {});
+    };
+    const leaveAbly = () => {
+      getRoom("presence-main")
+        .then((room) => room.presence.leave())
+        .catch(() => {});
+    };
+    const updateAbly = (online: boolean) => {
+      getRoom("presence-main")
+        .then((room) => room.presence.update({ name: displayName, color, online }))
+        .catch(() => {});
+    };
+
     if (typeof window !== "undefined") {
-      window.addEventListener("beforeunload", () =>
+      onAblyConnectionState((connected) => {
+        if (connected) enterAbly();
+      });
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", () => {
         supabase
           .from("presence")
           .update({ online: false })
-          .eq("session_id", sessionId)
-      );
+          .eq("session_id", sessionId);
+        leaveAbly();
+      });
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
           supabase
             .from("presence")
             .update({ online: false })
             .eq("session_id", sessionId);
+          updateAbly(false);
         } else {
           supabase
             .from("presence")
             .update({ online: true, last_seen: new Date().toISOString() })
             .eq("session_id", sessionId);
+          updateAbly(true);
         }
       });
     }
   },
 
   subscribePresence(cb: (users: User[]) => void) {
-    const channel = supabase
-      .channel("presence-list")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "presence" },
-        async () => {
-          const { data } = await supabase
-            .from("presence")
-            .select("*")
-            .eq("online", true);
+    let supabaseUnsub: (() => void) | null = null;
+    let ablyUnsub: (() => void) | null = null;
+    let disposed = false;
 
+    const refreshAbly = async () => {
+      try {
+        const room = await getRoom("presence-main");
+        const members = await room.presence.get();
+        if (disposed) return;
+        const users = members
+          .filter((m) => {
+            const data = (m.data || {}) as Record<string, unknown>;
+            return data.online !== false;
+          })
+          .map((m) => {
+            const data = (m.data || {}) as Record<string, unknown>;
+            return {
+              name: (data.name as string) || m.clientId,
+              id: m.clientId,
+              color: (data.color as string) || "#8B5CF6",
+            };
+          }) as User[];
+        state.onlineUsers = users;
+        cb(users);
+      } catch {}
+    };
+
+    const setupAbly = () => {
+      if (ablyUnsub || disposed) return;
+      getRoom("presence-main")
+        .then((room) => {
+          if (disposed) return;
+          const sub = room.presence.subscribe((event) => {
+            if (disposed) return;
+            if (
+              event.type === "present" ||
+              event.type === "enter" ||
+              event.type === "leave" ||
+              event.type === "update"
+            ) {
+              refreshAbly();
+            }
+          });
+          ablyUnsub = () => sub.unsubscribe();
+          refreshAbly();
+          if (supabaseUnsub) {
+            supabaseUnsub();
+            supabaseUnsub = null;
+          }
+        })
+        .catch(() => {});
+    };
+
+    const setupSupabase = () => {
+      if (supabaseUnsub || disposed) return;
+      const channel = supabase
+        .channel("presence-list")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "presence" },
+          async () => {
+            const { data } = await supabase
+              .from("presence")
+              .select("*")
+              .eq("online", true);
+
+            if (data) {
+              const users = data.map((d) => ({
+                name: d.display_name,
+                id: d.session_id,
+                color: d.color,
+              })) as User[];
+              state.onlineUsers = users;
+              cb(users);
+            }
+          }
+        )
+        .subscribe();
+
+      supabase
+        .from("presence")
+        .select("*")
+        .eq("online", true)
+        .then(({ data }) => {
           if (data) {
             const users = data.map((d) => ({
               name: d.display_name,
@@ -1100,28 +1359,23 @@ export const Store = {
             state.onlineUsers = users;
             cb(users);
           }
-        }
-      )
-      .subscribe();
+        });
 
-    // Initial fetch
-    supabase
-      .from("presence")
-      .select("*")
-      .eq("online", true)
-      .then(({ data }) => {
-        if (data) {
-          const users = data.map((d) => ({
-            name: d.display_name,
-            id: d.session_id,
-            color: d.color,
-          })) as User[];
-          state.onlineUsers = users;
-          cb(users);
-        }
+      supabaseUnsub = () => supabase.removeChannel(channel);
+    };
+
+    setupSupabase();
+    if (typeof window !== "undefined") {
+      onAblyConnectionState((connected) => {
+        if (connected) setupAbly();
       });
+    }
 
-    const unsub = () => supabase.removeChannel(channel);
+    const unsub = () => {
+      disposed = true;
+      if (ablyUnsub) ablyUnsub();
+      if (supabaseUnsub) supabaseUnsub();
+    };
     state.presenceListeners.push(unsub);
     return unsub;
   },
@@ -1322,13 +1576,66 @@ export const Store = {
   },
 
   async sendPushNotification(
-    _userId: string,
-    _title: string,
-    _body: string,
-    _data?: Record<string, string>
+    userId: string,
+    title: string,
+    body: string,
+    data?: Record<string, string>
   ): Promise<void> {
-    // Push notifications would require a server-side function
-    // For now, this is a no-op
+    // Route through the omix-api worker, which queues into the notifications
+    // table with the service role. No-op if the worker isn't deployed.
+    await queuePushNotification(userId, title, body, data);
+  },
+
+  // === CALL LOG ===
+  async getCallLog(limit = 50): Promise<CallLogEntry[]> {
+    const uid = getSessionId();
+    const { data } = await supabase
+      .from("call_log")
+      .select("*")
+      .or(`caller_id.eq.${uid},callee_id.eq.${uid}`)
+      .order("started_at", { ascending: false })
+      .limit(limit);
+
+    if (!data) return [];
+    return data.map((d) => ({
+      id: d.id,
+      callerId: d.caller_id,
+      calleeId: d.callee_id,
+      callerName: d.caller_name || "",
+      calleeName: d.callee_name || "",
+      video: d.video || false,
+      status: d.status || "ended",
+      startedAt: toDate(d.started_at),
+      endedAt: d.ended_at ? toDate(d.ended_at) : null,
+      durationMs: d.duration_ms ?? null,
+    })) as CallLogEntry[];
+  },
+
+  subscribeCallLog(cb: (entries: CallLogEntry[]) => void) {
+    const uid = getSessionId();
+    const channel = supabase
+      .channel(`call-log-${uid}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "call_log",
+          filter: `or=(caller_id.eq.${uid},callee_id.eq.${uid})`,
+        },
+        async () => {
+          const entries = await this.getCallLog();
+          cb(entries);
+        }
+      )
+      .subscribe();
+
+    // Initial fetch
+    this.getCallLog().then(cb);
+
+    const unsub = () => supabase.removeChannel(channel);
+    state.listeners.push(unsub);
+    return unsub;
   },
 
   // === CLEANUP ===

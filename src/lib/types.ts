@@ -128,3 +128,42 @@ export interface ActiveCall {
   active: boolean;
   participantCount: number;
 }
+
+export interface CallLogEntry {
+  id: string;
+  callerId: string;
+  calleeId: string;
+  callerName: string;
+  calleeName: string;
+  video: boolean;
+  /** "ringing" while in progress, otherwise a CallEndReason. */
+  status: string;
+  startedAt: Date | { toDate: () => Date };
+  endedAt?: Date | { toDate: () => Date } | null;
+  durationMs?: number | null;
+}
+
+export type CallEndReason =
+  | "ended"
+  | "missed"
+  | "no-answer"
+  | "declined"
+  | "canceled"
+  | "failed";
+
+export interface CallSession {
+  /** Monotonic id unique per call (used to key call UI state). */
+  id: number;
+  /** Stable id shared by both parties (used for call-log dedupe). */
+  callUid?: string;
+  roomId: string;
+  direction: "outgoing" | "incoming";
+  video: boolean;
+  partnerId: string | null;
+  partnerName: string;
+  status: "ringing" | "connecting" | "active" | "ended";
+  /** When status === "ended", why the call ended (drives the "Missed call" etc. UI). */
+  endReason?: CallEndReason;
+  /** Epoch ms when the session ended. */
+  endedAt?: number;
+}

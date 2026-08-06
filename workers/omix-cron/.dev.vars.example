@@ -1,0 +1,3 @@
+# Copy this file to .dev.vars (git-ignored) and fill in real values for local dev.
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
