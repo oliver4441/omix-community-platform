@@ -21,3 +21,6 @@ dist
 workers/**/.dev.vars
 # graphify knowledge-graph cache (regenerated, not source)
 graphify-out/cache/
+
+# dev-only browser walkthrough script
+walkthrough.mjs

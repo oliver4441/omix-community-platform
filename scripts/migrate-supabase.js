@@ -21,7 +21,7 @@ import { createClient } from "@supabase/supabase-js";
 // deliberately NOT used here (server-side only, via the Cloudflare Workers).
 const SUPABASE_URL = "https://frcmgkayluazwkokywux.supabase.co";
 const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyY21na2F5bHV6ZWt5d3V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NDMzNzMsImV4cCI6MjEwMDMxOTM3M30.rDriWj_mHifzH3dSDOyNinNZM01Q-WADntw9-gtRDTM";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyY21na2F5bHVhendrb2t5d3V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NDMzNzMsImV4cCI6MjEwMDMxOTM3M30.rDriWj_mHifzH3dSDOyNinNZM01Q-WADntw9-gtRDTM";
 
 const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "supabase", "migrations");
 
@@ -69,13 +69,19 @@ async function main() {
         error && /Could not find the table|relation .* does not exist/i.test(error.message);
       const isAuth =
         error && /JWT|jwt|unauthorized|permission denied|invalid api key/i.test(error.message);
-      return { table, isMissing, isAuth };
+      const isNetwork =
+        error &&
+        /fetch failed|network|ENOTFOUND|ECONNREFUSED|EAI_AGAIN|timeout|abort/i.test(
+          error.message
+        );
+      return { table, isMissing, isAuth, isNetwork };
     })
   );
 
-  const present = checks.filter((c) => !c.isMissing).map((c) => c.table);
+  const present = checks.filter((c) => !c.isMissing && !c.isNetwork).map((c) => c.table);
   const missing = checks.filter((c) => c.isMissing).map((c) => c.table);
   const authBlocked = checks.filter((c) => c.isAuth);
+  const netBlocked = checks.filter((c) => c.isNetwork);
 
   for (const t of present) console.log(`   ✅ ${t}`);
   for (const t of missing) console.log(`   ❌ ${t} — MISSING (apply migrations)`);
@@ -85,6 +91,13 @@ async function main() {
     console.log(
       "\n⚠️  The anon key was rejected — results may be unreliable. Verify the key\n" +
         "   in src/lib/supabase.ts matches your Supabase project."
+    );
+    process.exit(2);
+  }
+  if (netBlocked.length > 0) {
+    console.log(
+      "\n⚠️  Could not reach the Supabase API (network blocked/timeout). Results are\n" +
+        "   NOT reliable — re-run from a machine that can reach supabase.co."
     );
     process.exit(2);
   }
