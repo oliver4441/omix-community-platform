@@ -26,7 +26,11 @@ interface AuthContextType {
     email: string,
     password: string,
     displayName: string
-  ) => Promise<void>;
+  ) => Promise<{ needsVerification: boolean }>;
+  signInWithGithub: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  resendVerification: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -117,9 +121,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           color: userColor,
         });
       }
+      // If Supabase email confirmation is on, no session is returned until the
+      // user clicks the verification link — surface that to the UI.
+      return { needsVerification: Boolean(data.user && !data.session) };
     },
     []
   );
+
+  const signInWithGithub = useCallback(async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+    if (error) throw error;
+  }, []);
+
+  const resetPassword = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/`,
+    });
+    if (error) throw error;
+  }, []);
+
+  const resendVerification = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+    });
+    if (error) throw error;
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  }, []);
 
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
@@ -128,7 +165,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, isAdmin, signIn, signUp, signOut }}
+      value={{
+        user,
+        loading,
+        isAdmin,
+        signIn,
+        signUp,
+        signInWithGithub,
+        resetPassword,
+        resendVerification,
+        updatePassword,
+        signOut,
+      }}
     >
       {children}
     </AuthContext.Provider>

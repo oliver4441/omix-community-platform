@@ -232,6 +232,38 @@
     background: rgba(0, 0, 0, 0.3);
   }
 
+  .hero-glow {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(
+      circle,
+      rgba(160, 120, 255, 0.15) 0%,
+      rgba(11, 19, 38, 0) 70%
+    );
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgba(73, 68, 84, 0.15) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(73, 68, 84, 0.15) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .glow-input:focus {
+    box-shadow: 0 0 0 1px var(--color-primary-container);
+    border-color: var(--color-primary-container);
+  }
+
+  .glow-effect {
+    filter: drop-shadow(0 0 20px rgba(109, 59, 215, 0.6));
+  }
+
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
   }

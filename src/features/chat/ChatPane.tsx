@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } fro
 import { ImageLightbox } from './ImageLightbox';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
+import { RightSidebar } from './RightSidebar';
 import { Store } from '@/lib/store';
 import { useToast } from '@/components/ui/Toast';
 import { initiateCall, setActiveChannel } from '@/lib/calls';
@@ -601,6 +602,15 @@ export function ChatPane({
           />
         )}
       </div>
+
+      {/* Desktop right sidebar — members + pinned updates (stitch 05/12) */}
+      {!isDM && (
+        <RightSidebar
+          pins={pins}
+          onlineUsers={onlineUsers}
+          channelName={channelName}
+        />
+      )}
 
       {threadMessage && (
         <Suspense fallback={null}>
