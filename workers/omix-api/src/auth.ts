@@ -10,6 +10,7 @@ import {
   workerOrigin,
 } from "./util";
 import { sendEmail } from "./email";
+import { getSessionUser, getBearer } from "./util";
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
@@ -78,9 +79,81 @@ export async function handleAuth(path: string, request: Request, env: Env): Prom
       return githubLogin(env, request);
     case "/auth/github/callback":
       return githubCallback(env, request);
+    case "/auth/change-password":
+      return changePassword(env, request);
+    case "/auth/account":
+      return deleteAccount(env, request);
     default:
       return null;
   }
+}
+
+/** Change password from the settings screen (requires the current password). */
+async function changePassword(env: Env, request: Request): Promise<Response> {
+  const user = await getSessionUser(env, request);
+  if (!user) return json({ error: "unauthorized" }, 401, env);
+  const { currentPassword, newPassword } = await readJson<{
+    currentPassword?: string;
+    newPassword?: string;
+  }>(request);
+  if (!newPassword || newPassword.length < 6)
+    return json({ error: "password_too_short" }, 400, env);
+
+  const row = await env.DB.prepare(
+    "SELECT password_hash, password_salt FROM users WHERE id = ?"
+  )
+    .bind(user.id)
+    .first<Record<string, unknown>>();
+  // GitHub-only accounts have no password — reject rather than guessing.
+  if (!row || !row.password_hash) return json({ error: "no_password" }, 400, env);
+  const hash = await hashPassword(currentPassword || "", row.password_salt as string);
+  if (hash !== row.password_hash) return json({ error: "wrong_password" }, 403, env);
+
+  const salt = genToken(16);
+  const newHash = await hashPassword(newPassword, salt);
+  await env.DB.batch([
+    env.DB.prepare("UPDATE users SET password_hash = ?, password_salt = ?, updated_at = ? WHERE id = ?")
+      .bind(newHash, salt, now(), user.id),
+    // Keep the current session, revoke all others.
+    env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND token <> ?")
+      .bind(user.id, getBearer(request) || ""),
+  ]);
+  return json({ ok: true }, 200, env);
+}
+
+/** Permanently delete the account and its data (requires the password). */
+async function deleteAccount(env: Env, request: Request): Promise<Response> {
+  const user = await getSessionUser(env, request);
+  if (!user) return json({ error: "unauthorized" }, 401, env);
+  const { password } = await readJson<{ password?: string }>(request);
+
+  const row = await env.DB.prepare(
+    "SELECT password_hash, password_salt FROM users WHERE id = ?"
+  )
+    .bind(user.id)
+    .first<Record<string, unknown>>();
+  if (row?.password_hash) {
+    const hash = await hashPassword(password || "", row.password_salt as string);
+    if (hash !== row.password_hash) return json({ error: "wrong_password" }, 403, env);
+  }
+
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM email_tokens WHERE user_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM profiles WHERE session_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM presence WHERE session_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM stats WHERE session_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM typing WHERE session_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM fcm_tokens WHERE session_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM notification_settings WHERE session_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM board_votes WHERE session_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM server_members WHERE user_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM call_log WHERE caller_id = ? OR callee_id = ?").bind(user.id, user.id),
+    env.DB.prepare("DELETE FROM dm_messages WHERE author_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM dm_channels WHERE participants LIKE ?").bind(`%${user.id}%`),
+    env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id),
+  ]);
+  return json({ ok: true }, 200, env);
 }
 
 async function signup(env: Env, request: Request): Promise<Response> {

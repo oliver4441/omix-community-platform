@@ -1,23 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase, toCamel } from "@/lib/supabase";
+import { api, type BoardPost } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Mso } from "@/components/ui/icons";
-
-interface BoardPost {
-  id: string;
-  workspaceId: string | null;
-  category: string;
-  title: string;
-  body: string;
-  authorId: string;
-  authorName: string;
-  authorColor: string;
-  upvotes: number;
-  pinned: boolean;
-  createdAt: string;
-}
 
 const DEFAULT_CATEGORIES = [
   "All Discussions",
@@ -26,81 +12,57 @@ const DEFAULT_CATEGORIES = [
   "#Bugs",
 ];
 
-export function BoardroomFeed({ isMobile }: { isMobile: boolean }) {
+export function BoardroomFeed(props: { isMobile: boolean }) {
+  // isMobile is part of the shared view prop contract; layout is responsive on its own.
+  void props.isMobile;
   const { user } = useAuth();
   const [posts, setPosts] = useState<BoardPost[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [available, setAvailable] = useState(true);
   const [category, setCategory] = useState("All Discussions");
   const [showComposer, setShowComposer] = useState(false);
-  const [myVotes, setMyVotes] = useState<Record<string, number>>({});
+  const [myVotes, setMyVotes] = useState<Record<string, boolean>>({});
   const [draft, setDraft] = useState({ category: "#RFCs", title: "", body: "" });
 
   useEffect(() => {
-    let unsub: (() => void) | undefined;
-    (async () => {
+    let disposed = false;
+
+    const load = async () => {
       try {
-        const { data, error } = await supabase
-          .from("board_posts")
-          .select("*")
-          .order("pinned", { ascending: false })
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        setPosts((data || []).map((r) => toCamel(r) as unknown as BoardPost));
+        const data = await api.listBoardPosts();
+        if (disposed) return;
+        setPosts(data);
         setAvailable(true);
-
-        // Vote subscription
-        const channel = supabase
-          .channel("board_posts-realtime")
-          .on(
-            "postgres_changes",
-            { event: "INSERT", schema: "public", table: "board_posts" },
-            (payload) => {
-              const row = payload.new as Record<string, unknown>;
-              setPosts((prev) => [
-                toCamel(row) as unknown as BoardPost,
-                ...prev,
-              ]);
-            }
-          )
-          .on(
-            "postgres_changes",
-            { event: "UPDATE", schema: "public", table: "board_posts" },
-            (payload) => {
-              const row = payload.new as Record<string, unknown>;
-              const updated = toCamel(row) as unknown as BoardPost;
-              setPosts((prev) =>
-                prev.map((p) => (p.id === updated.id ? updated : p))
-              );
-            }
-          )
-          .subscribe();
-        unsub = () => void supabase.removeChannel(channel);
       } catch {
-        setAvailable(false);
+        if (!disposed) setAvailable(false);
       } finally {
-        setLoaded(true);
+        if (!disposed) setLoaded(true);
       }
-    })();
+    };
+    load();
 
-    // Load my votes
-    (async () => {
+    const loadMyVotes = async () => {
       try {
-        const { data } = await supabase
-          .from("board_votes")
-          .select("post_id, vote")
-          .eq("session_id", user?.uid ?? "");
-        const map: Record<string, number> = {};
-        (data || []).forEach((v) => {
-          map[v.post_id as string] = v.vote as number;
+        const { votes } = await api.getMyBoardVotes();
+        if (disposed) return;
+        const map: Record<string, boolean> = {};
+        Object.keys(votes).forEach((id) => {
+          map[id] = true;
         });
         setMyVotes(map);
       } catch {
         /* ignore */
       }
-    })();
+    };
+    loadMyVotes();
 
-    return () => void unsub?.();
+    // Poll for new posts / vote-count changes (no realtime channel on D1).
+    const timer = setInterval(load, 15000);
+
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+    };
   }, [user?.uid]);
 
   const filtered =
@@ -108,58 +70,55 @@ export function BoardroomFeed({ isMobile }: { isMobile: boolean }) {
       ? posts
       : posts.filter((p) => `#${p.category}` === category);
 
-  const vote = async (post: BoardPost, dir: 1 | -1) => {
-    const current = myVotes[post.id] ?? 0;
-    const delta = current === dir ? -dir : dir - current;
+  const vote = async (post: BoardPost) => {
+    const voted = myVotes[post.id];
+    // Optimistic update
     setPosts((prev) =>
       prev.map((p) =>
-        p.id === post.id ? { ...p, upvotes: p.upvotes + delta } : p
+        p.id === post.id ? { ...p, voteCount: p.voteCount + (voted ? -1 : 1) } : p
       )
     );
-    setMyVotes((prev) => ({ ...prev, [post.id]: current === dir ? 0 : dir }));
+    setMyVotes((prev) => ({ ...prev, [post.id]: !voted }));
     try {
-      const existing = myVotes[post.id];
-      if (existing && existing !== dir) {
-        await supabase
-          .from("board_votes")
-          .update({ vote: dir })
-          .eq("post_id", post.id)
-          .eq("session_id", user?.uid ?? "");
-      } else {
-        await supabase.from("board_votes").upsert({
-          post_id: post.id,
-          session_id: user?.uid ?? "",
-          vote: dir,
-        });
-      }
-      const { data: counts } = await supabase
-        .from("board_votes")
-        .select("vote")
-        .eq("post_id", post.id);
-      const total = (counts || []).reduce(
-        (acc, v) => acc + (v.vote as number),
-        0
-      );
-      await supabase
-        .from("board_posts")
-        .update({ upvotes: total })
-        .eq("id", post.id);
+      if (voted) await api.unvoteBoardPost(post.id);
+      else await api.voteBoardPost(post.id);
     } catch {
-      /* realtime will reconcile */
+      // Revert on failure
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === post.id ? { ...p, voteCount: p.voteCount + (voted ? 1 : -1) } : p
+        )
+      );
+      setMyVotes((prev) => ({ ...prev, [post.id]: voted }));
+    }
+  };
+
+  /** Remove my vote (down arrow) — no-op unless I've already upvoted. */
+  const unvote = async (post: BoardPost) => {
+    if (!myVotes[post.id]) return;
+    setPosts((prev) =>
+      prev.map((p) => (p.id === post.id ? { ...p, voteCount: p.voteCount - 1 } : p))
+    );
+    setMyVotes((prev) => ({ ...prev, [post.id]: false }));
+    try {
+      await api.unvoteBoardPost(post.id);
+    } catch {
+      setPosts((prev) =>
+        prev.map((p) => (p.id === post.id ? { ...p, voteCount: p.voteCount + 1 } : p))
+      );
+      setMyVotes((prev) => ({ ...prev, [post.id]: true }));
     }
   };
 
   const submit = async () => {
     if (!draft.title.trim()) return;
     try {
-      await supabase.from("board_posts").insert({
+      await api.createBoardPost({
         category: draft.category.replace(/^#/, "") || "General",
         title: draft.title.trim(),
         body: draft.body.trim(),
-        author_id: user?.uid ?? "",
-        author_name: user?.displayName || "Anonymous",
-        upvotes: 0,
-        pinned: false,
+        authorName: user?.displayName || "Anonymous",
+        authorColor: "#a078ff",
       });
       setDraft({ category: "#RFCs", title: "", body: "" });
       setShowComposer(false);
@@ -207,8 +166,8 @@ export function BoardroomFeed({ isMobile }: { isMobile: boolean }) {
           <div className="glass-panel rounded-lg p-8 flex flex-col items-center gap-3 text-center">
             <Mso name="forum" size={40} className="text-on-surface-variant" />
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Boardroom posts aren&apos;t available yet. Run the Omix feature
-              migration to enable them.
+              Boardroom posts aren&apos;t available yet. Deploy the omix-api
+              worker to enable them.
             </p>
           </div>
         ) : !loaded ? (
@@ -246,56 +205,42 @@ export function BoardroomFeed({ isMobile }: { isMobile: boolean }) {
               </div>
             ) : (
               filtered.map((post) => {
-                const myVote = myVotes[post.id] ?? 0;
+                const myVote = myVotes[post.id];
                 return (
                   <article
                     key={post.id}
-                    className={`relative overflow-hidden rounded-lg flex gap-3 p-4 ${
-                      post.pinned
-                        ? "glass-panel"
-                        : "bg-surface-container-low border border-outline-variant/30 hover:border-outline-variant transition-colors"
-                    }`}
+                    className="relative overflow-hidden rounded-lg flex gap-3 p-4 bg-surface-container-low border border-outline-variant/30 hover:border-outline-variant transition-colors"
                   >
-                    {post.pinned && (
-                      <div className="absolute top-0 left-0 w-1 h-full bg-secondary" />
-                    )}
                     {/* Vote column (desktop) */}
                     <div className="hidden sm:flex flex-col items-center gap-1 pt-1 shrink-0">
                       <button
-                        onClick={() => vote(post, 1)}
+                        onClick={() => vote(post)}
                         className={`w-8 h-8 rounded-full hover:bg-surface-container-high transition-colors ${
-                          myVote === 1 ? "text-primary" : "text-on-surface-variant hover:text-primary"
+                          myVote ? "text-primary" : "text-on-surface-variant hover:text-primary"
                         }`}
-                        aria-label="Upvote"
+                        aria-label={myVote ? "Remove upvote" : "Upvote"}
                       >
-                        <Mso name="keyboard_arrow_up" size={20} fill={myVote === 1} />
+                        <Mso name="keyboard_arrow_up" size={20} fill={myVote} />
                       </button>
                       <span className="font-code-md text-code-md font-bold text-on-surface">
-                        {post.upvotes}
+                        {post.voteCount}
                       </span>
                       <button
-                        onClick={() => vote(post, -1)}
+                        onClick={() => unvote(post)}
+                        disabled={!myVote}
                         className={`w-8 h-8 rounded-full hover:bg-surface-container-high transition-colors ${
-                          myVote === -1 ? "text-error" : "text-on-surface-variant hover:text-error"
-                        }`}
-                        aria-label="Downvote"
+                          myVote ? "text-error" : "text-on-surface-variant hover:text-error"
+                        } disabled:opacity-40 disabled:hover:bg-transparent`}
+                        aria-label="Remove my vote"
                       >
-                        <Mso name="keyboard_arrow_down" size={20} fill={myVote === -1} />
+                        <Mso name="keyboard_arrow_down" size={20} fill={myVote} />
                       </button>
                     </div>
                     <div className="flex-1 flex flex-col gap-1.5 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {post.pinned && (
-                          <span className="flex items-center gap-1 font-code-md text-code-md text-secondary">
-                            <Mso name="push_pin" size={14} fill />
-                            #{post.category}
-                          </span>
-                        )}
-                        {!post.pinned && (
-                          <span className="font-code-md text-code-md text-primary bg-primary/10 px-2 py-0.5 rounded">
-                            #{post.category}
-                          </span>
-                        )}
+                        <span className="font-code-md text-code-md text-primary bg-primary/10 px-2 py-0.5 rounded">
+                          #{post.category}
+                        </span>
                         <span className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1.5">
                           <span
                             className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-code-md shrink-0"
@@ -325,18 +270,16 @@ export function BoardroomFeed({ isMobile }: { isMobile: boolean }) {
                       {/* Mobile vote + comments */}
                       <div className="sm:hidden flex items-center gap-2 mt-2 pt-2 border-t border-outline-variant/20">
                         <div className="flex items-center gap-1 text-on-surface-variant bg-surface-container rounded-full px-2 py-1 border border-outline-variant/30">
-                          <button
-                            onClick={() => vote(post, 1)}
-                            className={myVote === 1 ? "text-primary" : ""}
-                          >
+                          <button onClick={() => vote(post)} className={myVote ? "text-primary" : ""}>
                             <Mso name="keyboard_arrow_up" size={16} />
                           </button>
                           <span className="font-code-md text-code-md text-xs font-bold text-on-surface">
-                            {post.upvotes}
+                            {post.voteCount}
                           </span>
                           <button
-                            onClick={() => vote(post, -1)}
-                            className={myVote === -1 ? "text-error" : ""}
+                            onClick={() => unvote(post)}
+                            disabled={!myVote}
+                            className={myVote ? "text-error" : "opacity-40"}
                           >
                             <Mso name="keyboard_arrow_down" size={16} />
                           </button>

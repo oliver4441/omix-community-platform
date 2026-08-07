@@ -6,6 +6,7 @@
 /* eslint-disable react-hooks/immutability */
 
 import { useState, useEffect, useRef } from "react";
+import { api } from "@/lib/api";
 import { Store, getUserColor } from "@/lib/store";
 import type { Channel, User, UserStats } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
@@ -65,6 +66,18 @@ function SettingsModal({
     setTimeout(() => setMessage(""), 4000);
   };
 
+  const friendlyError = (err: unknown, fallback: string): string => {
+    const code = (err as { code?: string })?.code;
+    const map: Record<string, string> = {
+      wrong_password: "Current password is incorrect",
+      password_too_short: "New password must be at least 6 characters",
+      unauthorized: "You must be signed in",
+      no_password: "This account has no password (GitHub sign-in)",
+      api_not_configured: "Backend not configured — deploy the omix-api worker",
+    };
+    return (code && map[code]) || fallback;
+  };
+
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -119,26 +132,13 @@ function SettingsModal({
     }
     setSaving(true);
     try {
-      const { supabase } = await import("@/lib/supabase");
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !user.email) throw new Error("Not authenticated");
-      // Supabase requires re-authentication via email + current password
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: currentPassword,
-      });
-      if (authError) throw new Error("Current password is incorrect");
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-      if (updateError) throw updateError;
+      await api.auth.changePassword(currentPassword, newPassword);
       showMsg("Password changed successfully");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: unknown) {
-      const e = err as { message?: string };
-      showMsg(e.message || "Failed to change password", "error");
+      showMsg(friendlyError(err, "Failed to change password"), "error");
     }
     setSaving(false);
   };
@@ -150,23 +150,14 @@ function SettingsModal({
     }
     setDeleting(true);
     try {
-      const { supabase } = await import("@/lib/supabase");
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !user.email) throw new Error("Not authenticated");
-      // Re-authenticate first
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: deletePassword,
-      });
-      if (authError) throw new Error("Password is incorrect");
-      // Delete profile
-      await supabase.from("profiles").delete().eq("session_id", user.id);
-      // Delete user account (requires service role — will fail gracefully)
-      await supabase.auth.admin.deleteUser(user.id).catch(() => {});
-      window.location.reload();
+      await api.auth.deleteAccount(deletePassword);
+      showMsg("Account deleted");
+      setTimeout(() => {
+        void signOut();
+        window.location.reload();
+      }, 600);
     } catch (err: unknown) {
-      const e = err as { message?: string };
-      showMsg(e.message || "Failed to delete account", "error");
+      showMsg(friendlyError(err, "Failed to delete account"), "error");
     }
     setDeleting(false);
   };
@@ -175,13 +166,7 @@ function SettingsModal({
     if (!promoteEmail.trim()) return;
     setPromoting(true);
     try {
-      const { supabase } = await import("@/lib/supabase");
-      // Note: profiles table doesn't have email column — users are identified by session_id
-      // For now, store admin by email in config
-      const { error } = await supabase
-        .from("config")
-        .upsert({ id: "settings", data: { adminEmail: promoteEmail.trim() } });
-      if (error) throw error;
+      await api.promoteAdmin(promoteEmail.trim());
       showMsg("Admin promoted! User must re-login");
       setPromoteEmail("");
     } catch {

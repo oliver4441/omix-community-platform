@@ -13,45 +13,72 @@ import { VerificationSuccessScreen } from "@/features/auth/VerificationSuccessSc
 import { SetNewPasswordScreen } from "@/features/auth/SetNewPasswordScreen";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
 import { Store } from "@/lib/store";
 
 type PublicFlow = "landing" | "signin" | "signup" | "forgot" | "verify";
 
+interface AuthLink {
+  token: string;
+  type: "verify" | "recovery";
+}
+
 /**
- * Inspect the current URL (hash for implicit flow, query for PKCE) to figure
- * out what kind of Supabase auth link the user arrived from.
+ * Email links from the worker look like <app>/?token=...&type=verify|recovery.
  */
-function detectAuthLink(): "verified" | "recovery" | null {
+function detectAuthLink(): AuthLink | null {
   if (typeof window === "undefined") return null;
-  const url = `${window.location.hash} ${window.location.search}`;
-  if (/type=recovery/.test(url) || /access_token=.*type=recovery/.test(url)) {
-    return "recovery";
-  }
-  if (/access_token=|type=(signup|email|invite)/.test(url) || /code=/.test(url)) {
-    return "verified";
-  }
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  const type = params.get("type");
+  if (token && (type === "verify" || type === "recovery")) return { token, type };
   return null;
 }
 
 function clearAuthLinkParams() {
   try {
     const url = new URL(window.location.href);
-    url.hash = "";
     url.search = "";
+    url.hash = "";
     window.history.replaceState({}, document.title, url.toString());
   } catch {
     /* ignore */
   }
 }
 
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div
+        className="w-10 h-10 rounded-full"
+        style={{
+          border: "2px solid var(--color-primary)",
+          borderTopColor: "transparent",
+          animation: "spin 0.8s linear infinite",
+        }}
+      />
+    </div>
+  );
+}
+
 function AppInner() {
   const { user, loading, signInWithGithub } = useAuth();
   const [flow, setFlow] = useState<PublicFlow>("landing");
   const [verifyEmail, setVerifyEmail] = useState("");
-  // What kind of Supabase email link (if any) the user arrived on.
-  const [authLink, setAuthLink] = useState(detectAuthLink);
+  const [authLink, setAuthLink] = useState<AuthLink | null>(detectAuthLink);
+  const [verifyDone, setVerifyDone] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
 
-  // Request notification permission
+  // Consume email-verification links from the URL.
+  useEffect(() => {
+    if (authLink?.type !== "verify" || verifyDone) return;
+    api.auth
+      .verifyEmail(authLink.token)
+      .then(() => setVerifyDone(true))
+      .catch(() => setVerifyError("This verification link is invalid or has expired."));
+  }, [authLink, verifyDone]);
+
+  // Request notification permission after login.
   useEffect(() => {
     if (!user) return;
     const timer = setTimeout(() => {
@@ -60,18 +87,46 @@ function AppInner() {
     return () => clearTimeout(timer);
   }, [user]);
 
-  if (loading) {
+  if (loading) return <LoadingScreen />;
+
+  // Password-recovery link → set a new password (no session required).
+  if (authLink?.type === "recovery") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div
-          className="w-10 h-10 rounded-full"
-          style={{
-            border: "2px solid var(--color-primary)",
-            borderTopColor: "transparent",
-            animation: "spin 0.8s linear infinite",
+      <SetNewPasswordScreen
+        token={authLink.token}
+        onDone={() => {
+          setAuthLink(null);
+          clearAuthLinkParams();
+          setFlow("signin");
+        }}
+      />
+    );
+  }
+
+  // Email-verification link.
+  if (authLink?.type === "verify") {
+    if (verifyError) {
+      return (
+        <VerifyEmailScreen
+          email={verifyEmail || ""}
+          error={verifyError}
+          onChangeEmail={() => {
+            setAuthLink(null);
+            clearAuthLinkParams();
+            setFlow("signup");
           }}
         />
-      </div>
+      );
+    }
+    if (!verifyDone) return <LoadingScreen />;
+    return (
+      <VerificationSuccessScreen
+        onLaunch={() => {
+          setAuthLink(null);
+          clearAuthLinkParams();
+          setFlow("signin");
+        }}
+      />
     );
   }
 
@@ -102,35 +157,10 @@ function AppInner() {
         return (
           <LandingPage
             onGetStarted={() => setFlow("signup")}
-            onGithub={() => signInWithGithub()}
+            onGithub={() => signInWithGithub().catch(() => {})}
           />
         );
     }
-  }
-
-  // Logged in via a password-recovery link: force a new password first.
-  if (authLink === "recovery") {
-    return (
-      <SetNewPasswordScreen
-        onDone={() => {
-          setAuthLink(null);
-          clearAuthLinkParams();
-        }}
-      />
-    );
-  }
-
-  // Logged in: show the one-time verification-success interstitial if the user
-  // just confirmed their email, then hand off to the workspace.
-  if (authLink === "verified") {
-    return (
-      <VerificationSuccessScreen
-        onLaunch={() => {
-          setAuthLink(null);
-          clearAuthLinkParams();
-        }}
-      />
-    );
   }
 
   return (

@@ -14,11 +14,8 @@ let connected = false;
 function getClientId(): string {
   if (typeof window === "undefined") return "anon";
   try {
-    const raw = localStorage.getItem("sb-frcmgkayluazwkokywux-auth-token");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed?.user?.id) return parsed.user.id;
-    }
+    const uid = localStorage.getItem("os_uid");
+    if (uid) return uid;
   } catch {}
   return `sess_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 }
@@ -47,7 +44,7 @@ export function getChatClient(): ChatClient {
     realtime.connection.on((stateChange) => {
       connected = stateChange.current === "connected";
       if (stateChange.current === "failed") {
-        console.warn("[ably] connection failed — falling back to Supabase realtime");
+        console.warn("[ably] connection failed — falling back to polling");
       }
     });
     chatClient = new ChatClient(realtime, { logLevel: LogLevel.Warn });

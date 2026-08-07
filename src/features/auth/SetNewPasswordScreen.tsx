@@ -4,7 +4,13 @@ import { useState, type FormEvent } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Mso } from "@/components/ui/icons";
 
-export function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
+export function SetNewPasswordScreen({
+  token,
+  onDone,
+}: {
+  token?: string | null;
+  onDone: () => void;
+}) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
@@ -15,6 +21,10 @@ export function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!token) {
+      setError("This recovery link is invalid. Request a new one.");
+      return;
+    }
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
@@ -25,7 +35,7 @@ export function SetNewPasswordScreen({ onDone }: { onDone: () => void }) {
     }
     setSubmitting(true);
     try {
-      await updatePassword(password);
+      await updatePassword(token, password);
       onDone();
     } catch (err: unknown) {
       const ex = err as { message?: string };

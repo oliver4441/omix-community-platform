@@ -7,9 +7,11 @@ import { Mso } from "@/components/ui/icons";
 export function VerifyEmailScreen({
   email,
   onChangeEmail,
+  error: linkError,
 }: {
   email: string;
   onChangeEmail: () => void;
+  error?: string;
 }) {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
@@ -62,7 +64,12 @@ export function VerifyEmailScreen({
             Link resent — check your inbox again.
           </p>
         )}
-        {error && (
+        {linkError && (
+          <p className="mb-4 text-sm text-[var(--color-dnd)]" role="alert">
+            {linkError}
+          </p>
+        )}
+        {error && !linkError && (
           <p className="mb-4 text-sm text-[var(--color-dnd)]" role="alert">
             {error}
           </p>

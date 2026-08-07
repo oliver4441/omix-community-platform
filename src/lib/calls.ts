@@ -1,6 +1,6 @@
 import { getChatClient } from "@/lib/ably";
 import { getSessionId, Store } from "@/lib/store";
-import { supabase } from "@/lib/supabase";
+import { api } from "@/lib/api";
 import type { RealtimeChannel } from "ably";
 import type { CallSession, CallEndReason } from "@/lib/types";
 
@@ -229,15 +229,15 @@ async function logCallStart(session: CallSession) {
   const myName = Store.displayName || "Guest";
   const outgoing = session.direction === "outgoing";
   try {
-    await supabase.from("call_log").upsert({
+    await api.createCallLog({
       id: session.callUid,
-      caller_id: outgoing ? myId : session.partnerId || "",
-      callee_id: outgoing ? session.partnerId || "" : myId,
-      caller_name: outgoing ? myName : session.partnerName,
-      callee_name: outgoing ? session.partnerName : myName,
+      callerId: outgoing ? myId : session.partnerId || "",
+      calleeId: outgoing ? session.partnerId || "" : myId,
+      callerName: outgoing ? myName : session.partnerName,
+      calleeName: outgoing ? session.partnerName : myName,
       video: session.video,
       status: "ringing",
-      started_at: new Date().toISOString(),
+      startedAt: new Date().toISOString(),
     });
   } catch (err) {
     console.warn("[call] failed to log call start", err);
@@ -251,11 +251,11 @@ async function logCallEnd(reason: CallEndReason) {
   const durationMs = callStartedAt ? Date.now() - callStartedAt : null;
   callLogId = null;
   try {
-    await supabase.from("call_log").upsert({
+    await api.createCallLog({
       id,
       status: reason,
-      ended_at: new Date().toISOString(),
-      duration_ms: durationMs,
+      endedAt: new Date().toISOString(),
+      durationMs,
     });
   } catch (err) {
     console.warn("[call] failed to log call end", err);

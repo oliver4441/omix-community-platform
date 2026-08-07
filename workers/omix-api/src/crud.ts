@@ -146,7 +146,8 @@ async function getMessages(
   channelId: string,
   before?: string,
   limit = 50,
-  pinnedOnly = false
+  pinnedOnly = false,
+  threadId?: string
 ) {
   const dm = await isDMChannel(env, channelId);
   const table = dm ? "dm_messages" : "messages";
@@ -154,7 +155,10 @@ async function getMessages(
 
   let sql = `SELECT * FROM ${table} WHERE ${col} = ?`;
   const binds: unknown[] = [channelId];
-  if (pinnedOnly) {
+  if (threadId) {
+    sql += " AND thread_id = ?";
+    binds.push(threadId);
+  } else if (pinnedOnly) {
     sql += " AND pinned = 1";
   } else {
     sql += " AND pinned = 0";
@@ -453,7 +457,8 @@ export async function handleCrud(
   if (msgsMatch && method === "GET") {
     const before = url.searchParams.get("before") || undefined;
     const limit = parseInt(url.searchParams.get("limit") || "50", 10);
-    const messages = await getMessages(env, msgsMatch[1], before, limit);
+    const threadId = url.searchParams.get("thread") || undefined;
+    const messages = await getMessages(env, msgsMatch[1], before, limit, false, threadId);
     return json({ messages }, 200, env);
   }
   if (msgsMatch && method === "POST") {
@@ -469,6 +474,18 @@ export async function handleCrud(
   }
 
   const msgMatch = p.match(/^\/messages\/([^/]+)$/);
+  if (msgMatch && method === "GET") {
+    let row = await env.DB.prepare("SELECT * FROM messages WHERE id = ?")
+      .bind(msgMatch[1])
+      .first<Record<string, unknown>>();
+    if (!row) {
+      row = await env.DB.prepare("SELECT * FROM dm_messages WHERE id = ?")
+        .bind(msgMatch[1])
+        .first<Record<string, unknown>>();
+    }
+    if (!row) return json({ error: "not_found" }, 404, env);
+    return json(mapMessage(row), 200, env);
+  }
   if (msgMatch && method === "PATCH") {
     const { text } = await readJson<{ text?: string }>(request);
     await env.DB.prepare("UPDATE messages SET text = ?, edited = 1, edited_at = ? WHERE id = ?")
@@ -482,6 +499,16 @@ export async function handleCrud(
       env.DB.prepare("DELETE FROM dm_messages WHERE id = ?").bind(msgMatch[1]),
     ]);
     return json({ ok: true }, 200, env);
+  }
+
+  const threadMatch = p.match(/^\/threads\/([^/]+)$/);
+  if (threadMatch && method === "GET") {
+    const { results } = await env.DB.prepare(
+      "SELECT * FROM messages WHERE thread_id = ? ORDER BY timestamp ASC LIMIT 200"
+    )
+      .bind(threadMatch[1])
+      .all<Record<string, unknown>>();
+    return json({ messages: (results || []).map(mapMessage) }, 200, env);
   }
 
   const pinMatch = p.match(/^\/messages\/([^/]+)\/pin$/);
@@ -552,6 +579,27 @@ export async function handleCrud(
         .run();
     }
     return json({ ok: true }, 200, env);
+  }
+
+  // ── Typing list (fallback when Ably is unavailable) ──
+  if (p === "/typing" && method === "GET") {
+    const channelId = url.searchParams.get("channelId");
+    let sql = "SELECT * FROM typing";
+    const binds: unknown[] = [];
+    if (channelId) {
+      sql += " WHERE channel_id = ?";
+      binds.push(channelId);
+    }
+    const { results } = await env.DB.prepare(sql).bind(...binds).all<Record<string, unknown>>();
+    return json(
+      (results || []).map((r) => ({
+        name: r.display_name,
+        sessionId: r.session_id,
+        channelId: r.channel_id,
+      })),
+      200,
+      env
+    );
   }
 
   // ── Presence ──
@@ -676,10 +724,15 @@ export async function handleCrud(
   }
   if (p === "/call-log" && method === "POST") {
     const body = await readJson<Record<string, unknown>>(request);
-    const id = genId();
+    // Upsert on id so both parties (start + end) collapse into a single row.
+    const id = (body.id as string) || genId();
     await env.DB.prepare(
       `INSERT INTO call_log (id, caller_id, callee_id, caller_name, callee_name, video, status, started_at, ended_at, duration_ms, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         status = excluded.status,
+         ended_at = COALESCE(excluded.ended_at, call_log.ended_at),
+         duration_ms = COALESCE(excluded.duration_ms, call_log.duration_ms)`
     )
       .bind(
         id,
@@ -699,6 +752,18 @@ export async function handleCrud(
   }
 
   // ── Boardroom ──
+  if (p === "/board-posts/mine-votes" && method === "GET") {
+    const { results } = await env.DB.prepare(
+      "SELECT post_id FROM board_votes WHERE session_id = ?"
+    )
+      .bind(user.id)
+      .all<{ post_id: string }>();
+    const votes: Record<string, number> = {};
+    (results || []).forEach((r) => {
+      votes[r.post_id] = 1;
+    });
+    return json({ votes }, 200, env);
+  }
   const voteMatch = p.match(/^\/board-posts\/([^/]+)\/vote$/);
   if (voteMatch && method === "POST") {
     await env.DB.prepare(
