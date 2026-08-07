@@ -102,10 +102,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback(
     async (email: string, password: string, displayName: string) => {
       const res = await api.auth.signup(email, password, displayName);
-      // Profile row is created server-side lazily; nothing else needed here.
+      // Verification is disabled, so the account is active immediately — sign in.
+      if (!res.needsVerification) {
+        const { user: u } = await api.auth.login(email, password);
+        setUserId(u.uid);
+        setUser(mapUser(u));
+        refreshAdmin(u.uid, u.email || null);
+      }
       return { needsVerification: res.needsVerification };
     },
-    []
+    [refreshAdmin]
   );
 
   const signInWithGithub = useCallback(async () => {

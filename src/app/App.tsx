@@ -20,18 +20,20 @@ type PublicFlow = "landing" | "signin" | "signup" | "forgot" | "verify";
 
 interface AuthLink {
   token: string;
-  type: "verify" | "recovery";
+  type: "verify" | "recovery" | "reset";
 }
 
 /**
- * Email links from the worker look like <app>/?token=...&type=verify|recovery.
+ * Email links from the worker look like <app>/?token=...&type=verify|reset
+ * (legacy recovery links are accepted too).
  */
 function detectAuthLink(): AuthLink | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
   const type = params.get("type");
-  if (token && (type === "verify" || type === "recovery")) return { token, type };
+  if (token && (type === "verify" || type === "recovery" || type === "reset"))
+    return { token, type };
   return null;
 }
 
@@ -90,7 +92,7 @@ function AppInner() {
   if (loading) return <LoadingScreen />;
 
   // Password-recovery link → set a new password (no session required).
-  if (authLink?.type === "recovery") {
+  if (authLink?.type === "recovery" || authLink?.type === "reset") {
     return (
       <SetNewPasswordScreen
         token={authLink.token}
