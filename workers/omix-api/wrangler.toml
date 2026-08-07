@@ -9,19 +9,20 @@ compatibility_date = "2024-11-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "omix-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "55de740c-6c82-4291-b3ad-621398eb4854"
 migrations_dir = "../migrations"
 
 # ── File storage (R2, replaces Supabase Storage) ──
-# Create once:  npx wrangler r2 bucket create omix-assets
-[[r2_buckets]]
-binding = "ASSETS"
-bucket_name = "omix-assets"
+# TEMP: disabled until R2 is enabled on the account (dashboard → R2 → enable).
+# Then:  npx wrangler r2 bucket create omix-assets && restore this block + redeploy.
+# [[r2_buckets]]
+# binding = "ASSETS"
+# bucket_name = "omix-assets"
 
 [vars]
-CORS_ORIGIN = "*"
+CORS_ORIGIN = "https://omix-systems-cd1af.web.app"
 # Frontend origin used for email links + GitHub OAuth redirects, e.g. https://omix.app
-APP_ORIGIN = ""
+APP_ORIGIN = "https://omix-systems-cd1af.web.app"
 
 # Secrets (wrangler secret put / CI — never commit):
 #   ABLY_API_KEY          — Ably API key
