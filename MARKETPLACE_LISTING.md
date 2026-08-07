@@ -17,15 +17,12 @@ Key features
 - Offline-first UX with service worker and seamless updates
 - Extensible and privacy-minded: no server-side user data retained by vendor
 
-## Plans (suggested)
-- Free — $0
-  - Single community, basic channels, community branding, unlimited messages
-- Basic — $9/month
-  - Custom domains, analytics, moderation tools, 5 team seats
-- Pro — $29/month
-  - SSO, advanced moderation, priority support, 50 team seats
+## Plans (open-source / suggested)
+- Free — Open Source (MIT)
+  - Fully free and open-source. Self-host or deploy static artifact. All core features: channels, roles, moderation, unlimited messages.
+  - Recommended for OSS projects and community-run deployments.
 
-(Adjust pricing and seat counts as desired.)
+Note: Omix Hub is distributed under the MIT license; no paid plans are required for OSS usage. If paid offerings are later desired, create distinct paid plan identifiers in the Marketplace UI and update this document.
 
 ## Security & compliance
 - Uses Supabase for data storage; TLS in transit
@@ -34,7 +31,7 @@ Key features
 - Publisher account: 2FA enabled; GitHub Marketplace Developer Agreement signed
 
 ## Webhook recommendations
-- Example endpoint: https://your-domain.example/.netlify/functions/marketplace-webhook
+- Example endpoint: https://<YOUR_DEPLOYMENT_DOMAIN>/\.netlify/functions/marketplace-webhook  (deploy netlify/functions/marketplace-webhook.js and set MARKETPLACE_WEBHOOK_SECRET)
 - Subscribe to events: marketplace_purchase, marketplace_change, marketplace_cancelled
 - Verify HMAC signatures and respond with 200 status quickly
 
