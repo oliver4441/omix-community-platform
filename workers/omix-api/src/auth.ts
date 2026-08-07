@@ -276,7 +276,8 @@ async function githubLogin(env: Env, request: Request): Promise<Response> {
   const cb = `${workerOrigin(request)}/auth/github/callback`;
   const url =
     `https://github.com/login/oauth/authorize?client_id=${env.GITHUB_CLIENT_ID}` +
-    `&redirect_uri=${encodeURIComponent(cb)}&scope=read:user user:email&state=${state}`;
+    // repo scope: lets the profile list the user's repositories (public + private).
+    `&redirect_uri=${encodeURIComponent(cb)}&scope=read:user user:email repo&state=${state}`;
   return new Response(null, {
     status: 302,
     headers: {
@@ -363,6 +364,16 @@ async function githubCallback(env: Env, request: Request): Promise<Response> {
       .bind(ghUser.login, ghUser.avatar_url || (user.avatar_url as string) || "", ghUser.name || (user.full_name as string) || "", ts, ts, user.id)
       .run();
   }
+
+  // Persist the OAuth token so GET /github/repos can list this user's repos.
+  await env.DB.prepare(
+    `INSERT INTO github_tokens (user_id, access_token, scope, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET access_token = excluded.access_token,
+       scope = excluded.scope, updated_at = excluded.updated_at`
+  )
+    .bind(user.id, access_token, "read:user user:email repo", now(), now())
+    .run();
 
   const session = await issueSession(env, user.id as string);
   const origin = appOrigin(env, request);

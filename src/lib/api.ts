@@ -344,12 +344,37 @@ export const api = {
 
   // ── profiles ──
   getProfile(sessionId: string) {
-    return request<{ name: string; avatar: string; color: string; githubUsername?: string; bio?: string } | null>(
-      `/profiles/${sessionId}`
-    );
+    return request<
+      | {
+          name: string;
+          avatar: string;
+          color: string;
+          githubUsername?: string;
+          bio?: string;
+          title?: string;
+          skills?: string[];
+          status?: "online" | "idle" | "dnd" | "offline";
+          statusText?: string;
+        }
+      | null
+    >(`/profiles/${sessionId}`);
   },
-  saveProfile(data: { name?: string; avatar?: string; color?: string }) {
+  saveProfile(data: {
+    name?: string;
+    avatar?: string;
+    color?: string;
+    githubUsername?: string;
+    bio?: string;
+    title?: string;
+    skills?: string[];
+  }) {
     return request<{ ok: boolean }>("/profiles", { method: "PUT", body: JSON.stringify(data) });
+  },
+  setStatus(status: "online" | "idle" | "dnd" | "offline", statusText?: string) {
+    return request<{ ok: boolean; status: string; statusText: string }>("/me/status", {
+      method: "PUT",
+      body: JSON.stringify({ status, statusText }),
+    });
   },
 
   // ── stats ──
@@ -423,6 +448,11 @@ export const api = {
     );
   },
 
+  // ── GitHub (profile repositories) ──
+  getGithubRepos() {
+    return request<GitHubOverview>("/github/repos");
+  },
+
   // ── notification settings ──
   getNotificationSettings() {
     return request<NotificationSettings>("/notification-settings");
@@ -459,6 +489,8 @@ export const api = {
   },
 };
 
+export type UserStatus = "online" | "idle" | "dnd" | "offline";
+
 export interface AuthUser {
   uid: string;
   email: string;
@@ -466,6 +498,35 @@ export interface AuthUser {
   avatarUrl: string;
   githubUsername: string;
   emailConfirmedAt: string | null;
+}
+
+export interface GitHubRepo {
+  fullName: string;
+  name: string;
+  htmlUrl: string;
+  description: string;
+  language: string | null;
+  stars: number;
+  forks: number;
+  private: boolean;
+  fork: boolean;
+  archived: boolean;
+  updatedAt: string;
+  topics: string[];
+  homepage: string | null;
+}
+
+export interface GitHubOverview {
+  connected: boolean;
+  error?: string;
+  user?: {
+    login: string;
+    followers: number;
+    following: number;
+    publicRepos: number;
+    avatarUrl: string;
+  };
+  repos?: GitHubRepo[];
 }
 
 export interface FeedPost {

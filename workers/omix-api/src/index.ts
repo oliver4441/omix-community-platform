@@ -19,6 +19,7 @@ import type { Env } from "./env";
 import { json, corsHeaders, now, getBearer, requireUser, getSessionUser } from "./util";
 import { handleAuth } from "./auth";
 import { handleCrud, serveAsset } from "./crud";
+import { handleGithub } from "./github";
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -91,6 +92,8 @@ export default {
       // ── Everything else requires a session ──
       const auth = await requireUser(env, request);
       if ("response" in auth) return auth.response;
+      const gh = await handleGithub(path, request, env, auth.user);
+      if (gh) return gh;
       const handled = await handleCrud(request, env, auth.user);
       if (handled) return handled;
 
