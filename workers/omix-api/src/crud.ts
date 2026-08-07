@@ -12,6 +12,7 @@ import {
   workerOrigin,
   type SessionUser,
 } from "./util";
+import { refreshFeed } from "../../feed/ingest";
 
 // ═══════════ mappers ═══════════
 
@@ -114,6 +115,28 @@ function mapPost(r: Record<string, unknown>) {
     authorColor: r.author_color,
     voteCount: (r.vote_count as number) || 0,
     createdAt: r.created_at,
+  };
+}
+
+function mapFeedPost(r: Record<string, unknown>) {
+  return {
+    id: r.id,
+    source: r.source,
+    externalId: r.external_id,
+    sourceUrl: r.source_url,
+    title: r.title,
+    summary: r.summary,
+    tags: parseJson<string[]>(r.tags as string, []),
+    category: r.category,
+    thumbnail: r.thumbnail,
+    imageUrl: r.image_url,
+    author: r.author,
+    score: r.score,
+    numComments: r.num_comments,
+    comments: parseJson<{ author: string; text: string }[]>(r.comments as string, []),
+    relatedRepos: parseJson<{ name: string; url: string; stars: number }[]>(r.related_repos as string, []),
+    publishedAt: r.published_at,
+    fetchedAt: r.fetched_at,
   };
 }
 
@@ -869,6 +892,35 @@ export async function handleCrud(
       .bind(genId(), body.userId, body.title, body.body || "", stringifyJson(body.data || {}), now())
       .run();
     return json({ ok: true }, 200, env);
+  }
+
+  // ── External feeds ──
+  if (p === "/feed" && method === "GET") {
+    const source = url.searchParams.get("source");
+    const tag = url.searchParams.get("tag");
+    const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10), 100);
+    const offset = parseInt(url.searchParams.get("offset") || "0", 10);
+    let sql = "SELECT * FROM feed_posts";
+    const binds: unknown[] = [];
+    const where: string[] = [];
+    if (source) {
+      where.push("source = ?");
+      binds.push(source);
+    }
+    if (tag) {
+      where.push("tags LIKE ?");
+      binds.push(`%"${tag}"%`);
+    }
+    if (where.length) sql += " WHERE " + where.join(" AND ");
+    sql += " ORDER BY published_at DESC LIMIT ? OFFSET ?";
+    binds.push(limit, offset);
+    const { results } = await env.DB.prepare(sql).bind(...binds).all<Record<string, unknown>>();
+    return json((results || []).map(mapFeedPost), 200, env);
+  }
+  if (p === "/feed/refresh" && method === "POST") {
+    // Manual refresh — same cooldowns as the cron, so this is safe to call.
+    const result = await refreshFeed(env);
+    return json(result, 200, env);
   }
 
   // ── Auth / me endpoints handled by the router ──

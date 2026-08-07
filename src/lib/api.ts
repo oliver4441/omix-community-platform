@@ -406,6 +406,23 @@ export const api = {
     return request<{ votes: Record<string, number> }>("/board-posts/mine-votes");
   },
 
+  // ── external feed (HN / Reddit / GitHub / Product Hunt) ──
+  getFeed(opts: { source?: string; tag?: string; limit?: number; offset?: number } = {}) {
+    const q = new URLSearchParams();
+    if (opts.source) q.set("source", opts.source);
+    if (opts.tag) q.set("tag", opts.tag);
+    if (opts.limit) q.set("limit", String(opts.limit));
+    if (opts.offset) q.set("offset", String(opts.offset));
+    const qs = q.toString();
+    return request<FeedPost[]>(`/feed${qs ? `?${qs}` : ""}`);
+  },
+  refreshFeed() {
+    return request<{ added: number; sources: Record<string, { fetched: number; status: string }> }>(
+      "/feed/refresh",
+      { method: "POST" }
+    );
+  },
+
   // ── notification settings ──
   getNotificationSettings() {
     return request<NotificationSettings>("/notification-settings");
@@ -449,6 +466,26 @@ export interface AuthUser {
   avatarUrl: string;
   githubUsername: string;
   emailConfirmedAt: string | null;
+}
+
+export interface FeedPost {
+  id: string;
+  source: "hn" | "reddit" | "devto" | "github" | "producthunt";
+  externalId: string;
+  sourceUrl: string;
+  title: string;
+  summary: string;
+  tags: string[];
+  category: string;
+  thumbnail: string;
+  imageUrl: string;
+  author: string;
+  score: number;
+  numComments: number;
+  comments: { author: string; text: string }[];
+  relatedRepos: { name: string; url: string; stars: number }[];
+  publishedAt: string;
+  fetchedAt: string;
 }
 
 export interface BoardPost {

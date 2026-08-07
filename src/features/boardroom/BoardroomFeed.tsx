@@ -12,17 +12,28 @@ const DEFAULT_CATEGORIES = [
   "#Bugs",
 ];
 
-export function BoardroomFeed(props: { isMobile: boolean }) {
+export function BoardroomFeed(props: {
+  isMobile: boolean;
+  /** Pre-filled draft from another view (e.g. "Discuss" on a feed post). */
+  initialDraft?: { title: string; body?: string; category?: string } | null;
+}) {
   // isMobile is part of the shared view prop contract; layout is responsive on its own.
   void props.isMobile;
+
   const { user } = useAuth();
   const [posts, setPosts] = useState<BoardPost[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [available, setAvailable] = useState(true);
   const [category, setCategory] = useState("All Discussions");
-  const [showComposer, setShowComposer] = useState(false);
   const [myVotes, setMyVotes] = useState<Record<string, boolean>>({});
-  const [draft, setDraft] = useState({ category: "#RFCs", title: "", body: "" });
+  // A feed post asked us to start a discussion — open the composer pre-filled.
+  // (BoardroomFeed remounts per visit, so initializing from the prop here is safe.)
+  const [draft, setDraft] = useState({
+    category: props.initialDraft?.category || "#RFCs",
+    title: props.initialDraft?.title || "",
+    body: props.initialDraft?.body || "",
+  });
+  const [showComposer, setShowComposer] = useState(Boolean(props.initialDraft?.title));
 
   useEffect(() => {
     let disposed = false;

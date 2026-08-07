@@ -10,6 +10,7 @@ import { CallPanel } from "@/features/chat/CallPanel";
 import { DMSidebar } from "@/features/chat/DMSidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { BoardroomFeed } from "@/features/boardroom/BoardroomFeed";
+import { FeedPage } from "@/features/feed/FeedPage";
 import { DeveloperProfile } from "@/features/profile/DeveloperProfile";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { WorkspaceDiscovery } from "@/features/onboarding/WorkspaceDiscovery";
@@ -24,6 +25,7 @@ export function AppLayout() {
   const [servers, setServers] = useState<Server[]>([]);
   const [serversLoaded, setServersLoaded] = useState(false);
   const [discoveryDismissed, setDiscoveryDismissed] = useState(false);
+  const [boardDraft, setBoardDraft] = useState<{ title: string; body?: string; category?: string } | null>(null);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -94,7 +96,17 @@ export function AppLayout() {
           </>
         ) : view === "boards" ? (
           <ErrorBoundary>
-            <BoardroomFeed isMobile={isMobile} />
+            <BoardroomFeed isMobile={isMobile} initialDraft={boardDraft} />
+          </ErrorBoundary>
+        ) : view === "feed" ? (
+          <ErrorBoundary>
+            <FeedPage
+              isMobile={isMobile}
+              onStartDiscussion={(draft) => {
+                setBoardDraft(draft);
+                setView("boards");
+              }}
+            />
           </ErrorBoundary>
         ) : view === "profile" ? (
           <ErrorBoundary>
@@ -124,6 +136,11 @@ export function AppLayout() {
         )}
       </div>
 
+      {/* Clear a pending board draft once the user leaves the boardroom */}
+      {view !== "boards" && boardDraft ? (
+        <BoardDraftClearer onClear={() => setBoardDraft(null)} />
+      ) : null}
+
       {/* Mobile bottom nav */}
       {isMobile && <MobileNav currentView={view} setView={setView} />}
 
@@ -131,4 +148,13 @@ export function AppLayout() {
       <CallPanel />
     </div>
   );
+}
+
+/** Tiny side-effect helper: runs when the user leaves the boardroom so a
+ *  consumed draft doesn't re-open the composer on a later visit. */
+function BoardDraftClearer({ onClear }: { onClear: () => void }) {
+  useEffect(() => {
+    onClear();
+  }, [onClear]);
+  return null;
 }
