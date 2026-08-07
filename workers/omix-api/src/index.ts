@@ -18,7 +18,7 @@ import Ably from "ably";
 import type { Env } from "./env";
 import { json, corsHeaders, now, getBearer, requireUser, getSessionUser } from "./util";
 import { handleAuth } from "./auth";
-import { handleCrud } from "./crud";
+import { handleCrud, serveAsset } from "./crud";
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -80,6 +80,12 @@ export default {
           return json({ ok: true }, 200, env);
         }
         return json({ error: "not found" }, 404, env);
+      }
+
+      // ── Uploaded files are public (no session needed) ──
+      if (path.startsWith("/assets/") && request.method === "GET") {
+        const res = await serveAsset(env, path.slice("/assets/".length));
+        return res || json({ error: "not_found" }, 404, env);
       }
 
       // ── Everything else requires a session ──

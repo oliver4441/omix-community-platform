@@ -1,7 +1,8 @@
 export interface Env {
   // Cloudflare bindings
   DB: D1Database;
-  ASSETS: R2Bucket;
+  /** File storage — KV on the free tier (no R2 activation / billing needed). */
+  ASSETS: KVNamespace;
 
   // Secrets (wrangler secret put / CI)
   ABLY_API_KEY: string;

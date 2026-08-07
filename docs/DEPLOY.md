@@ -3,7 +3,7 @@
 ## Architecture
 
 ```
-Frontend (Next.js static PWA)  ->  omix-api (Cloudflare Worker)  ->  D1 (SQLite) + R2 (files)
+Frontend (Next.js static PWA)  ->  omix-api (Cloudflare Worker)  ->  D1 (SQLite) + KV (files)
         src/                         workers/omix-api/                    ^
                                                       └── Ably (realtime chat, token minted here)
                                  omix-cron (Cloudflare Worker, cleanup every 5 min)
@@ -15,7 +15,7 @@ Frontend (Next.js static PWA)  ->  omix-api (Cloudflare Worker)  ->  D1 (SQLite)
 | API       | `omix-api` Worker — auth, CRUD, uploads, Ably tokens              | Cloudflare Workers          |
 | Cron      | `omix-cron` Worker — typing/presence cleanup (`*/5 * * * *`)      | Cloudflare Workers          |
 | Data      | **D1** (SQLite, replaces Supabase Postgres)                       | Cloudflare D1               |
-| Storage   | **R2** (replaces Supabase Storage)                                | Cloudflare R2               |
+| Storage   | **KV** (free tier, no billing — replaces Supabase Storage / R2)     | Cloudflare KV               |
 | Auth      | Custom in-worker (email/password PBKDF2 + GitHub OAuth)           | Cloudflare Workers + Resend |
 | Email     | Resend (verification + password reset)                            | resend.com                  |
 | Realtime  | Ably (token issued by `omix-api`)                                 | ably.com                    |
@@ -36,12 +36,12 @@ Live as of this writing (account `549a05783941248fb5a7f53ede7c54fa`,
 | omix-cron worker        | `https://omix-cron.kipkiruigideon890.workers.dev` ✅ cron `*/5`       |
 | D1 database `omix-db`   | `55de740c-6c82-4291-b3ad-621398eb4854` ✅ migrated (22 app tables)  |
 | Frontend (Firebase)     | `https://omix-systems-cd1af.web.app` ✅                               |
-| R2 bucket `omix-assets` | ⏳ pending — R2 not yet enabled on the account (see step 4)           |
+| Storage `omix-assets`   | KV namespace `0200ed9d4dd542d184fb2bcb9b24f363` ✅ (upload tested)    |
 | Secrets                 | `ABLY_API_KEY` set; `RESEND_API_KEY`, `GITHUB_*` pending (see step 5) |
 
 ## Prerequisites
 
-- Cloudflare account with **R2 enabled** (dashboard → **R2 → Enable** — free tier).
+- Cloudflare account (no paid services — D1, KV and Workers all have free tiers).
 - Ably API key (a working key is already bundled in `src/lib/ably.ts` as a fallback).
 - Resend API key (transactional email — required for signup verification / reset).
 - GitHub OAuth app (only if you want the "Continue with GitHub" button).
@@ -85,19 +85,23 @@ npx wrangler d1 execute omix-db --remote --config workers/omix-api/wrangler.toml
 (The count includes SQLite system tables — `sqlite_sequence`, `d1_migrations` —
 so expect 24–25, i.e. the 22 app tables.)
 
-### 4. R2 storage
+### 4. File storage (KV — free, no R2 activation/billing)
 
-R2 must be enabled **once per account** in the dashboard (Cloudflare → **R2 →
-Enable**). Until then, any R2 API call fails with `code: 10042`.
+Uploads (avatars, icons, files) are stored in a **Cloudflare KV** namespace.
+KV is free on every account — no R2 activation, no credit card, no `10042`.
 
 ```bash
-npx wrangler r2 bucket create omix-assets
+npx wrangler kv namespace create omix-assets
 ```
 
-> If `wrangler deploy` previously failed on the R2 binding (10042), the binding
-> in `workers/omix-api/wrangler.toml` is commented out. After enabling R2:
-> uncomment the `[[r2_buckets]]` block, create the bucket, and redeploy
-> (`npm run workers:deploy`).
+Copy the returned `id` into `workers/omix-api/wrangler.toml`
+(`[[kv_namespaces]]` block). Limits: **25 MB per value** (the app caps uploads
+at 20 MB) and **eventual consistency** — a freshly uploaded file may take a
+few seconds to be readable globally.
+
+Uploaded files are served publicly at `/assets/*` (no auth header — browsers
+load them in `<img>` tags), while the `/upload` endpoint itself requires a
+session.
 
 ### 5. Secrets
 
@@ -199,7 +203,7 @@ npx vercel deploy --prebuilt --prod --yes
 Push to `master` triggers both workflows:
 
 - **`.github/workflows/deploy-workers.yml`** (paths: `workers/**`) — typechecks,
-  creates the R2 bucket, applies D1 migrations with `--remote`, deploys both
+  ensures the KV namespace, applies D1 migrations with `--remote`, deploys both
   workers, sets secrets.
 - **`.github/workflows/deploy-frontend.yml`** (paths: `src/**`, `public/**`, …) —
   builds via `vercel build` with `NEXT_PUBLIC_API_BASE_URL` and deploys to
@@ -209,7 +213,7 @@ Push to `master` triggers both workflows:
 
 | Secret | Used by | Value |
 | ------ | ------- | ----- |
-| `CLOUDFLARE_API_TOKEN` | workers CI | Workers + D1 + R2 edit token |
+| `CLOUDFLARE_API_TOKEN` | workers CI | Workers + D1 + KV edit token |
 | `CLOUDFLARE_ACCOUNT_ID` | workers CI | `549a05783941248fb5a7f53ede7c54fa` |
 | `ABLY_API_KEY` | workers CI | Ably API key |
 | `RESEND_API_KEY` | workers CI | Resend API key |
@@ -223,8 +227,8 @@ missing.
 
 ## Troubleshooting
 
-- **R2 calls fail with `code: 10042`** → R2 isn't enabled on the account yet.
-  Dashboard → R2 → Enable, then create the bucket and redeploy.
+- **Uploads 404 / error JSON immediately after upload** → KV's eventual
+  consistency: wait a few seconds before reading a fresh key.
 - **Migration "applied" but schema missing remotely** → you ran
   `d1 migrations apply` without `--remote` (it touched local state). Re-run
   with `--remote`.

@@ -174,14 +174,14 @@ async function signup(env: Env, request: Request): Promise<Response> {
   const id = genId();
   const ts = now();
   await env.DB.prepare(
-    `INSERT INTO users (id, email, password_hash, password_salt, full_name, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO users (id, email, password_hash, password_salt, full_name, email_confirmed_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   )
-    .bind(id, em, hash, salt, (displayName || em.split("@")[0]).trim(), ts, ts)
+    .bind(id, em, hash, salt, (displayName || em.split("@")[0]).trim(), ts, ts, ts)
     .run();
 
-  await createAndSendToken(env, id, em, "verify");
-  return json({ ok: true, needsVerification: true }, 200, env);
+  // Verification is disabled — accounts are usable immediately.
+  return json({ ok: true, needsVerification: false }, 200, env);
 }
 
 async function verifyEmail(env: Env, request: Request): Promise<Response> {
@@ -209,7 +209,6 @@ async function login(env: Env, request: Request): Promise<Response> {
     Record<string, unknown>
   >();
   if (!user || !user.password_hash) return json({ error: "invalid_credentials" }, 401, env);
-  if (!user.email_confirmed_at) return json({ error: "email_not_confirmed" }, 403, env);
 
   const hash = await hashPassword(password || "", user.password_salt as string);
   if (hash !== user.password_hash) return json({ error: "invalid_credentials" }, 401, env);

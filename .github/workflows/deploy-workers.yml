@@ -50,9 +50,10 @@ jobs:
           GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
 
-      # Ensure the R2 bucket exists (errors if already present — that's fine).
-      - name: Ensure R2 bucket
-        run: npx wrangler r2 bucket create omix-assets || true
+      # Ensure the KV namespace exists (errors if already present — that's fine).
+      # The namespace id itself is committed in workers/omix-api/wrangler.toml.
+      - name: Ensure KV namespace
+        run: npx wrangler kv namespace create omix-assets || true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

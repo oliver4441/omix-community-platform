@@ -262,20 +262,10 @@ export async function handleCrud(
     const key = `${kind}/${Date.now()}_${genToken(4)}.${ext}`;
     const buf = await request.arrayBuffer();
     if (buf.byteLength > 25 * 1024 * 1024) return json({ error: "file_too_large" }, 413, env);
-    await env.ASSETS.put(key, buf, { httpMetadata: { contentType: ctype } });
+    await env.ASSETS.put(key, buf, { metadata: { contentType: ctype } });
     return json({ url: `${workerOrigin(request)}/assets/${key}` }, 200, env);
   }
 
-  const asset = p.match(/^\/assets\/(.+)$/);
-  if (asset && method === "GET") {
-    const obj = await env.ASSETS.get(asset[1]);
-    if (!obj) return json({ error: "not_found" }, 404, env);
-    const headers = new Headers();
-    obj.writeHttpMetadata(headers);
-    headers.set("Cache-Control", "public, max-age=31536000, immutable");
-    headers.set("Access-Control-Allow-Origin", env.CORS_ORIGIN || "*");
-    return new Response(obj.body, { headers });
-  }
 
   // ── Config / admin ──
   if (p === "/config/settings" && method === "GET") {
@@ -883,6 +873,19 @@ export async function handleCrud(
 
   // ── Auth / me endpoints handled by the router ──
   return null;
+}
+
+/** Serve an uploaded file. Called from the router BEFORE the auth gate so
+ *  images/files are publicly readable (browsers don't send Authorization). */
+export async function serveAsset(env: Env, key: string): Promise<Response | null> {
+  const { value, metadata } = await env.ASSETS.getWithMetadata(key, { type: "arrayBuffer" });
+  if (value === null) return null;
+  const meta = (metadata || {}) as { contentType?: string };
+  const headers = new Headers();
+  headers.set("Content-Type", meta.contentType || "application/octet-stream");
+  headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  headers.set("Access-Control-Allow-Origin", env.CORS_ORIGIN || "*");
+  return new Response(value, { headers });
 }
 
 async function recomputeVotes(env: Env, postId: string): Promise<void> {
