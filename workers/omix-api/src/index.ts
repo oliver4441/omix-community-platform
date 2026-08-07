@@ -1,60 +1,29 @@
 /**
- * omix-api — the app's backend API worker.
+ * omix-api — Omix Community backend on Cloudflare Workers.
+ *
+ * Replaces Supabase entirely: D1 (database), R2 (file storage), and a custom
+ * auth layer (email/password + GitHub OAuth) all live in this worker.
  *
  * Routes:
- *   GET  /health                     -> health check
- *   GET|POST /ably/token             -> short-lived Ably token (replaces the hardcoded key)
- *   POST /admin/verify-password      -> admin password check via Supabase service role
- *   POST /notifications/queue        -> queue a push notification (notifications table)
- *
- * Secrets come from Cloudflare (wrangler secret put), never from the client.
+ *   GET  /health                          health check
+ *   GET|POST /ably/token                  short-lived Ably token
+ *   POST /auth/signup|verify|login|forgot|reset|resend-verification
+ *   GET  /auth/github/login  /auth/github/callback
+ *   GET  /auth/me            POST /auth/logout
+ *   ...   /servers, /channels, /messages, /dm-channels, /presence, /typing,
+ *         /profiles, /stats, /call-log, /board-posts, /notification-settings,
+ *         /invites, /config, /admin, /upload, /assets/*  (see crud.ts)
  */
 import Ably from "ably";
+import type { Env } from "./env";
+import { json, corsHeaders, now, getBearer, requireUser, getSessionUser } from "./util";
+import { handleAuth } from "./auth";
+import { handleCrud } from "./crud";
 
-export interface Env {
-  ABLY_API_KEY: string;
-  SUPABASE_URL: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
-  CORS_ORIGIN?: string;
-  /** Optional shared secret. When set, /ably/token requires it in the Authorization header. */
-  TOKEN_AUTH_SECRET?: string;
-}
-
-const JSON_HEADERS = { "Content-Type": "application/json" };
-
-function corsHeaders(env: Env): Record<string, string> {
-  const origin = env.CORS_ORIGIN || "*";
-  return {
-    "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Max-Age": "86400",
-  };
-}
-
-function json(body: unknown, status: number, env: Env): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...JSON_HEADERS, ...corsHeaders(env) },
-  });
-}
-
-/** Authenticated PostgREST call using the service-role key (server-side only). */
-function supabaseFetch(env: Env, path: string, init: RequestInit = {}) {
-  return fetch(`${env.SUPABASE_URL}${path}`, {
-    ...init,
-    headers: {
-      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-      "Content-Type": "application/json",
-      ...(init.headers || {}),
-    },
-  });
-}
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 async function createAblyToken(env: Env, clientId: string) {
   const rest = new Ably.Rest(env.ABLY_API_KEY);
-  // 1 hour TTL, full channel capability (scoped to this app's use of Ably).
   return rest.auth.createTokenRequest({
     clientId,
     ttl: 60 * 60 * 1000,
@@ -73,12 +42,10 @@ export default {
 
     try {
       if (path === "/health" && request.method === "GET") {
-        return json({ ok: true, service: "omix-api", time: new Date().toISOString() }, 200, env);
+        return json({ ok: true, service: "omix-api", time: now() }, 200, env);
       }
 
       if (path === "/ably/token") {
-        // Optional gate: if TOKEN_AUTH_SECRET is configured, require it so anyone
-        // with the worker URL can't mint tokens for arbitrary client ids.
         if (env.TOKEN_AUTH_SECRET) {
           const header = request.headers.get("Authorization") || "";
           if (header !== `Bearer ${env.TOKEN_AUTH_SECRET}`) {
@@ -95,36 +62,31 @@ export default {
         return json(tokenRequest, 200, env);
       }
 
-      if (path === "/admin/verify-password" && request.method === "POST") {
-        const body = (await request.json().catch(() => ({}))) as { password?: string };
-        if (!body.password) return json({ error: "password is required" }, 400, env);
-        const res = await supabaseFetch(env, "/rest/v1/config?id=eq.settings&select=data");
-        const rows = (await res.json()) as Array<{ data?: { adminPassword?: string } }>;
-        const stored = rows?.[0]?.data?.adminPassword;
-        return json({ valid: Boolean(stored) && stored === body.password }, 200, env);
+      // ── Auth routes (no session required) ──
+      if (path.startsWith("/auth/")) {
+        const handled = await handleAuth(path, request, env);
+        if (handled) return handled;
+        // Session endpoints below
+        if (path === "/auth/me" && request.method === "GET") {
+          const user = await getSessionUser(env, request);
+          if (!user) return json({ error: "unauthorized" }, 401, env);
+          return json({ user }, 200, env);
+        }
+        if (path === "/auth/logout" && request.method === "POST") {
+          const token = getBearer(request);
+          if (token) {
+            await env.DB.prepare("DELETE FROM sessions WHERE token = ?").bind(token).run();
+          }
+          return json({ ok: true }, 200, env);
+        }
+        return json({ error: "not found" }, 404, env);
       }
 
-      if (path === "/notifications/queue" && request.method === "POST") {
-        const body = (await request.json().catch(() => ({}))) as {
-          userId?: string;
-          title?: string;
-          body?: string;
-          data?: Record<string, unknown>;
-        };
-        if (!body.userId || !body.title) {
-          return json({ error: "userId and title are required" }, 400, env);
-        }
-        const res = await supabaseFetch(env, "/rest/v1/notifications", {
-          method: "POST",
-          body: JSON.stringify({
-            target_user_id: body.userId,
-            title: body.title,
-            body: body.body || "",
-            data: body.data || {},
-          }),
-        });
-        return json({ ok: res.ok }, res.ok ? 200 : 502, env);
-      }
+      // ── Everything else requires a session ──
+      const auth = await requireUser(env, request);
+      if ("response" in auth) return auth.response;
+      const handled = await handleCrud(request, env, auth.user);
+      if (handled) return handled;
 
       return json({ error: "not found" }, 404, env);
     } catch (err) {

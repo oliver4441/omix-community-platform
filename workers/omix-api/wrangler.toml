@@ -2,9 +2,31 @@ name = "omix-api"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 
-# Non-secret configuration. Real secrets live in Cloudflare (wrangler secret put):
-#   ABLY_API_KEY              — Ably API key (moved out of the client bundle)
-#   SUPABASE_URL              — https://<project>.supabase.co
-#   SUPABASE_SERVICE_ROLE_KEY — service-role key (NEVER ship this to the client)
+# ── Database (D1, replaces Supabase Postgres) ──
+# Create once:  npx wrangler d1 create omix-db
+# then paste the returned database_id below and run:
+#   npx wrangler d1 migrations apply omix-db -c workers/omix-api/wrangler.toml
+[[d1_databases]]
+binding = "DB"
+database_name = "omix-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "../migrations"
+
+# ── File storage (R2, replaces Supabase Storage) ──
+# Create once:  npx wrangler r2 bucket create omix-assets
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "omix-assets"
+
 [vars]
 CORS_ORIGIN = "*"
+# Frontend origin used for email links + GitHub OAuth redirects, e.g. https://omix.app
+APP_ORIGIN = ""
+
+# Secrets (wrangler secret put / CI — never commit):
+#   ABLY_API_KEY          — Ably API key
+#   GITHUB_CLIENT_ID      — GitHub OAuth app client id
+#   GITHUB_CLIENT_SECRET  — GitHub OAuth app client secret
+#   RESEND_API_KEY        — transactional email (verification / password reset)
+#   EMAIL_FROM            — optional sender, e.g. "Omix <onboarding@resend.dev>"
+#   TOKEN_AUTH_SECRET     — optional shared secret gate for /ably/token

@@ -6,6 +6,9 @@ compatibility_date = "2024-11-01"
 [triggers]
 crons = ["*/5 * * * *"]
 
-# Secrets (wrangler secret put):
-#   SUPABASE_URL
-#   SUPABASE_SERVICE_ROLE_KEY
+# Same D1 database as omix-api
+[[d1_databases]]
+binding = "DB"
+database_name = "omix-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "../migrations"
