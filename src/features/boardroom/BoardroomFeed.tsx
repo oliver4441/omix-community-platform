@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, type BoardPost } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Mso } from "@/components/ui/icons";
+import { Markdown } from "@/components/Markdown";
 
 const DEFAULT_CATEGORIES = [
   "All Discussions",
@@ -274,9 +275,9 @@ export function BoardroomFeed(props: {
                         {post.title}
                       </h3>
                       {post.body && (
-                        <p className="font-body-sm text-body-sm text-on-surface-variant line-clamp-2 whitespace-pre-line">
-                          {post.body}
-                        </p>
+                        <div className="font-body-sm text-body-sm text-on-surface-variant line-clamp-3">
+                          <Markdown>{post.body}</Markdown>
+                        </div>
                       )}
                       {/* Mobile vote + comments */}
                       <div className="sm:hidden flex items-center gap-2 mt-2 pt-2 border-t border-outline-variant/20">
