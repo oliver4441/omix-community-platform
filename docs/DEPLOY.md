@@ -116,11 +116,42 @@ SQL migrations live in `supabase/migrations/` (idempotent `CREATE TABLE IF NOT
 EXISTS` statements) and are applied via the Supabase SQL editor or
 `supabase db push`.
 
-To check which tables are already applied (no secrets needed):
+**Project:** `https://frcmgkayluazwkokywux.supabase.co`
+
+> ⚠️ **Important:** the `frcmgkayluazwkokywux` project belongs to a different
+> Supabase account than the one currently logged in on this machine — run the
+> steps below from a machine/account that has owner access to that project.
+
+### Option A — Supabase CLI (recommended)
+
+```bash
+# 1. Log in with the account that OWNS the project
+supabase login
+
+# 2. Link the local repo to the project (will ask for the DB password)
+supabase link --project-ref frcmgkayluazwkokywux
+
+# 3. Apply all pending migrations
+supabase db push
+```
+
+### Option B — SQL Editor (no CLI)
+
+1. Dashboard → **SQL Editor** → **New query**.
+2. Paste the contents of **`supabase/apply-all.sql`** (a single combined,
+   idempotent file that includes every migration) and click **Run**.
+   Safe to re-run — everything is `IF NOT EXISTS`.
+
+### Verify
+
+Check which tables are applied (no secrets needed — uses the public anon key):
 
 ```bash
 node scripts/migrate-supabase.js
 ```
+
+The checker exits non-zero with a clear warning if the API is unreachable or
+the anon key is rejected, so a "all tables present" result is trustworthy.
 
 ## Troubleshooting
 
