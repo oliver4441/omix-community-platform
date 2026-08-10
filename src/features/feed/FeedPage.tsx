@@ -173,7 +173,7 @@ export function FeedPage(props: {
           <div className="glass-panel rounded-lg p-8 flex flex-col items-center gap-3 text-center">
             <Mso name="wifi_off" size={40} className="text-on-surface-variant" />
             <p className="font-body-md text-body-md text-on-surface-variant">
-              The developer feed isn&apos;t available yet — deploy the omix-api
+              The developer feed isn&apos;t available yet — deploy the omix-gateway
               worker and apply the feed migration to enable it.
             </p>
           </div>

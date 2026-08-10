@@ -2,7 +2,7 @@
  * Feed ingestion — aggregates developer-news from HN, Reddit, GitHub and
  * Product Hunt into the D1 `feed_posts` table.
  *
- * Shared by omix-cron (scheduled) and omix-api (POST /feed/refresh).
+ * Shared by omix-cron (scheduled) and omix-social (POST /feed/refresh).
  * All sources are free/keyless by default; GitHub optional basic auth and
  * the Product Hunt token are used only when the env vars are present.
  *
@@ -119,7 +119,7 @@ function genId(): string {
 
 // ── per-source fetchers ──
 
-async function fetchHN(env: FeedEnv): Promise<FeedPostInput[]> {
+async function fetchHN(): Promise<FeedPostInput[]> {
   const ids = (await fetchJson("https://hacker-news.firebaseio.com/v0/topstories.json")) as number[];
   const items = (
     await Promise.all(
@@ -188,7 +188,7 @@ async function fetchHN(env: FeedEnv): Promise<FeedPostInput[]> {
 
 const DEV_SUBREDDITS = ["programming", "javascript", "reactjs", "webdev", "rust", "golang", "python", "MachineLearning"];
 
-async function fetchReddit(env: FeedEnv): Promise<FeedPostInput[]> {
+async function fetchReddit(): Promise<FeedPostInput[]> {
   const out: FeedPostInput[] = [];
   const allChildren = await Promise.all(
     DEV_SUBREDDITS.map(async (sub) => {
@@ -233,7 +233,7 @@ async function fetchReddit(env: FeedEnv): Promise<FeedPostInput[]> {
   return out;
 }
 
-async function fetchDevto(env: FeedEnv): Promise<FeedPostInput[]> {
+async function fetchDevto(): Promise<FeedPostInput[]> {
   // Free, keyless, worker-friendly — the reliable "developer discussions"
   // source (Reddit blocks datacenter IPs, so this is the workhorse).
   try {

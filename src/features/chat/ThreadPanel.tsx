@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Store } from '@/lib/store';
 import type { Message } from '@/lib/types';
 import { MessageCircle, X, Send, Trash2 } from '@/components/ui/icons';
+import { Markdown } from '@/components/Markdown';
 
 function formatTime(ts: unknown): string {
   if (!ts) return '';
@@ -95,8 +96,8 @@ export function ThreadPanel({
                 {formatTime(parentMessage.timestamp)}
               </span>
             </div>
-            <div className="text-sm text-[var(--color-txt)] mt-0.5 leading-relaxed break-words whitespace-pre-wrap">
-              {parentMessage.text || ''}
+            <div className="text-sm text-[var(--color-txt)] mt-0.5 leading-relaxed break-words">
+              <Markdown>{parentMessage.text || ""}</Markdown>
             </div>
             {parentMessage.fileUrl && parentMessage.fileType?.startsWith('image/') && (
               <img
@@ -144,8 +145,8 @@ export function ThreadPanel({
                     </div>
                   )}
                 </div>
-                <div className="text-sm text-[var(--color-txt)] mt-0.5 leading-relaxed break-words whitespace-pre-wrap">
-                  {reply.text || ''}
+                <div className="text-sm text-[var(--color-txt)] mt-0.5 leading-relaxed break-words">
+                  <Markdown>{reply.text || ""}</Markdown>
                 </div>
                 {reply.fileUrl && reply.fileType?.startsWith('image/') && (
                   <img

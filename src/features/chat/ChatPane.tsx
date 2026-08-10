@@ -12,10 +12,8 @@ import type { Message, User, TypingUser } from '@/lib/types';
 import {
   Hash,
   MessageSquare,
-  MessageCircle,
   Pin,
   Search,
-  ChevronLeft,
   Edit3,
   Phone,
   Video,
@@ -116,7 +114,7 @@ export function ChatPane({
   const { toast } = useToast();
   const prevMsgCount = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Load author profiles
@@ -244,7 +242,7 @@ export function ChatPane({
   );
 
   const handleInput = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const val = e.target.value;
       setInput(val);
       if (val.trim())
@@ -324,7 +322,7 @@ export function ChatPane({
         return;
       }
       Store.uploadFile(file, Store.currentChannelId, displayName || 'Anonymous').catch(
-        (_err) => setShowDeleteConfirm('upload-failed')
+        () => setShowDeleteConfirm('upload-failed')
       );
       e.target.value = '';
     },
@@ -576,6 +574,7 @@ export function ChatPane({
         <MessageInput
           channelName={channelName}
           input={input}
+          inputRef={inputRef}
           showEmoji={showEmoji}
           setShowEmoji={setShowEmoji}
           showMentions={showMentions}

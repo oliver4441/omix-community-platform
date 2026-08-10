@@ -41,6 +41,8 @@ export function SettingsPage({
   isMobile: boolean;
   displayName: string;
 }) {
+  // isMobile is part of the shared view prop contract; layout is responsive on its own.
+  void isMobile;
   const [settings, setSettings] = useState<OmixSettings>(() => {
     if (typeof window === "undefined") return DEFAULT_SETTINGS;
     try {
@@ -118,7 +120,8 @@ export function SettingsPage({
               onClick={() => {
                 const next = !settings.pushEnabled;
                 update({ pushEnabled: next });
-                if (next) Store.requestNotificationPermission();
+                if (next) Store.enablePush();
+                else Store.disablePush();
               }}
               className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
                 settings.pushEnabled ? "bg-primary" : "bg-surface-container-highest"

@@ -1,0 +1,51 @@
+name = "omix-gateway"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# THE public backend entrypoint. The frontend's NEXT_PUBLIC_API_BASE_URL
+# points at this worker's URL (e.g. https://omix-gateway.<subdomain>.workers.dev).
+# workers.dev is enabled here; every other Omix worker is workers_dev = false.
+
+# ── Database (D1) — used for session validation before routing ──
+[[d1_databases]]
+binding = "DB"
+database_name = "omix-db"
+database_id = "55de740c-6c82-4291-b3ad-621398eb4854"
+migrations_dir = "../migrations"
+
+# ── Service bindings → domain workers (all workers_dev = false) ──
+[[services]]
+binding = "AUTH"
+service = "omix-auth"
+
+[[services]]
+binding = "CHAT"
+service = "omix-chat"
+
+[[services]]
+binding = "SERVERS"
+service = "omix-servers"
+
+[[services]]
+binding = "SOCIAL"
+service = "omix-social"
+
+[[services]]
+binding = "NOTIFICATIONS"
+service = "omix-notifications"
+
+[[services]]
+binding = "UPLOADS"
+service = "omix-uploads"
+
+[vars]
+CORS_ORIGIN = "https://omix-systems-cd1af.web.app"
+APP_ORIGIN = "https://omix-systems-cd1af.web.app"
+
+# Secrets (wrangler secret put / CI — never commit):
+#   ABLY_API_KEY          — Ably API key (for /ably/token)
+#   VAPID_PRIVATE_KEY     — Web Push VAPID key (for /push/vapid-public-key)
+#   VAPID_SUBJECT         — optional VAPID contact, e.g. mailto:admin@omix.app
+#   TOKEN_AUTH_SECRET     — optional shared secret gate for /ably/token
+#                           ❌ do NOT set if you want the browser client to
+#                           mint tokens freely (see docs/DEPLOY.md)

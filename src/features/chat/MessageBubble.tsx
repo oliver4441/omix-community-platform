@@ -2,6 +2,7 @@
 
 import { Store } from '@/lib/store';
 import type { Message } from '@/lib/types';
+import { Markdown } from '@/components/Markdown';
 import {
   Reply,
   MessageCircle,
@@ -9,11 +10,7 @@ import {
   Edit3,
   Trash2,
   Pin,
-  Check,
-  CheckCheck,
-  MoreHorizontal,
   FileText,
-  Image as ImageIcon,
 } from '@/components/ui/icons';
 
 function formatTime(ts: unknown): string {
@@ -80,6 +77,13 @@ export function MessageBubble({
     setLightboxSrc(url);
   };
 
+  const openAuthorProfile = () => {
+    if (isOwn || !msg.sessionId) return;
+    window.dispatchEvent(
+      new CustomEvent('openProfile', { detail: { userId: msg.sessionId } })
+    );
+  };
+
   const handleReplyClick = () => {
     const el = document.getElementById(`msg-${msg.replyTo?.id}`);
     if (el) {
@@ -109,7 +113,13 @@ export function MessageBubble({
       >
         {/* Other user's avatar — first message in group only */}
         {!isOwn && showAvatar && (
-          <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 mt-0.5 mr-2.5 self-start cursor-pointer transition-transform hover:scale-105">
+          <div
+            className="w-9 h-9 rounded-full overflow-hidden shrink-0 mt-0.5 mr-2.5 self-start cursor-pointer transition-transform hover:scale-105"
+            onClick={openAuthorProfile}
+            title="View profile"
+            role="button"
+            aria-label={`View ${msg.author}'s profile`}
+          >
             {profile?.avatar ? (
               <img
                 src={profile.avatar}
@@ -139,12 +149,16 @@ export function MessageBubble({
             <div
               className={`flex items-baseline gap-2 mb-1 ${isOwn ? 'flex-row-reverse' : ''}`}
             >
-              <span
-                className="text-xs font-semibold"
+              <button
+                onClick={openAuthorProfile}
+                className={`text-xs font-semibold ${
+                  isOwn ? '' : 'hover:underline cursor-pointer'
+                }`}
                 style={{ color: msg.color || 'var(--color-pri)' }}
+                title={isOwn ? undefined : 'View profile'}
               >
                 {msg.author}
-              </span>
+              </button>
               <span className="text-[10px] text-[var(--color-txt-muted)]">
                 {formatTime(msg.timestamp)}
               </span>
@@ -180,37 +194,43 @@ export function MessageBubble({
           >
             {/* Edit mode */}
             {isEditing ? (
-              <div className="flex gap-2 items-center">
-                <input
-                  type="text"
+              <div className="flex flex-col gap-2 items-end">
+                <textarea
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
-                  className="flex-1 bg-[var(--color-bg-mid)] text-[var(--color-txt)] rounded-xl px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-[var(--color-pri)]"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      saveEdit(msg.id);
+                    }
+                  }}
+                  rows={Math.min(8, Math.max(1, editText.split("\n").length))}
+                  className="flex-1 w-full min-w-[220px] bg-[var(--color-bg-mid)] text-[var(--color-txt)] rounded-xl px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-[var(--color-pri)] resize-y"
                   autoFocus
                   aria-label="Edit message text"
                 />
-                <button
-                  onClick={() => saveEdit(msg.id)}
-                  className="text-xs text-[var(--color-pri)] hover:underline"
-                  aria-label="Save edited message"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => {
-                    setEditing(null);
-                    setEditText('');
-                  }}
-                  className="text-xs text-[var(--color-txt-muted)] hover:underline"
-                  aria-label="Cancel editing message"
-                >
-                  Cancel
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => saveEdit(msg.id)}
+                    className="text-xs text-[var(--color-pri)] hover:underline"
+                    aria-label="Save edited message"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditing(null);
+                      setEditText("");
+                    }}
+                    className="text-xs text-[var(--color-txt-muted)] hover:underline"
+                    aria-label="Cancel editing message"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="text-sm leading-relaxed break-words whitespace-pre-wrap">
-                {msg.text}
-              </div>
+              <Markdown>{msg.text}</Markdown>
             )}
 
             {/* File attachment */}

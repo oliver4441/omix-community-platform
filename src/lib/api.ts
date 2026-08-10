@@ -1,9 +1,10 @@
 /**
- * omix-api client — the app's entire backend is this Cloudflare Worker
- * (D1 database + R2 storage + auth). Supabase is no longer used.
+ * omix-gateway client — the app's entire backend is behind this Cloudflare
+ * Worker (session auth + routing to the domain services)
+ * (D1 database + KV file storage). Supabase is no longer used.
  *
  * Set NEXT_PUBLIC_API_BASE_URL at build time to point the app at the deployed
- * worker, e.g. https://omix-api.<your-subdomain>.workers.dev
+ * worker, e.g. https://omix-gateway.<your-subdomain>.workers.dev
  */
 import type {
   Server,
@@ -452,6 +453,10 @@ export const api = {
   getGithubRepos() {
     return request<GitHubOverview>("/github/repos");
   },
+  /** Anyone's public GitHub overview (no token needed server-side). */
+  getProfileGithub(sessionId: string) {
+    return request<GitHubOverview>(`/profiles/${sessionId}/github`);
+  },
 
   // ── notification settings ──
   getNotificationSettings() {
@@ -464,12 +469,25 @@ export const api = {
     });
   },
 
-  // ── notifications ──
-  queuePushNotification(userId: string, title: string, body: string, data?: Record<string, string>) {
-    return request<{ ok: boolean }>("/notifications/queue", {
-      method: "POST",
-      body: JSON.stringify({ userId, title, body, data }),
+  // ── web push ──
+  getVapidPublicKey() {
+    return request<{ publicKey: string }>("/push/vapid-public-key");
+  },
+  savePushSubscription(sub: { endpoint: string; p256dh: string; auth: string; userAgent?: string }) {
+    return request<{ ok: boolean }>("/push/subscription", {
+      method: "PUT",
+      body: JSON.stringify(sub),
     });
+  },
+  deletePushSubscription(endpoint: string) {
+    return request<{ ok: boolean }>("/push/subscription", {
+      method: "DELETE",
+      body: JSON.stringify({ endpoint }),
+    });
+  },
+  /** Deliver queued push notifications now (also runs every 5 min via cron). */
+  sendPendingPushes() {
+    return request<{ delivered: number; failed: number }>("/push/send", { method: "POST" });
   },
 
   // ── uploads (R2) ──
@@ -486,6 +504,41 @@ export const api = {
     if (!res.ok) throw new ApiError("upload_failed", res.status);
     const data = (await res.json()) as { url: string };
     return data.url;
+  },
+
+  // ── snippets ──
+  getSnippets(language?: string, tag?: string) {
+    const q = new URLSearchParams();
+    if (language && language !== "all") q.set("language", language);
+    if (tag) q.set("tag", tag);
+    const qs = q.toString();
+    return request<Snippet[]>(`/snippets${qs ? `?${qs}` : ""}`);
+  },
+  createSnippet(data: {
+    title: string;
+    description: string;
+    language: string;
+    code: string;
+    tags: string[];
+    authorName?: string;
+    authorColor?: string;
+  }) {
+    return request<{ id: string }>("/snippets", { method: "POST", body: JSON.stringify(data) });
+  },
+  updateSnippet(
+    id: string,
+    data: { title?: string; description?: string; language?: string; code?: string; tags?: string[] }
+  ) {
+    return request<{ ok: boolean }>(`/snippets/${id}`, { method: "PUT", body: JSON.stringify(data) });
+  },
+  deleteSnippet(id: string) {
+    return request<{ ok: boolean }>(`/snippets/${id}`, { method: "DELETE" });
+  },
+  voteSnippet(id: string, up: boolean) {
+    return request<{ ok: boolean }>(`/snippets/${id}/vote`, { method: up ? "POST" : "DELETE" });
+  },
+  getSnippetVotes() {
+    return request<{ votes: Record<string, boolean> }>("/snippets/mine-votes");
   },
 };
 
@@ -560,6 +613,21 @@ export interface BoardPost {
   authorColor: string;
   voteCount: number;
   createdAt: string;
+}
+
+export interface Snippet {
+  id: string;
+  title: string;
+  description: string;
+  language: string;
+  code: string;
+  tags: string[];
+  authorId: string;
+  authorName: string;
+  authorColor: string;
+  voteCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface NotificationSettings {

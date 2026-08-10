@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { Send, Smile, Paperclip, X, AtSign, Reply } from '@/components/ui/icons';
 import type { Message } from '@/lib/types';
 
@@ -11,22 +11,30 @@ const EmojiPicker = lazy(() =>
 interface MessageInputProps {
   channelName: string;
   input: string;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
   showEmoji: boolean;
   setShowEmoji: (show: boolean) => void;
   showMentions: boolean;
   replyTo: Message['replyTo'] | null;
   setReplyTo: (reply: Message['replyTo'] | null) => void;
   sendMsg: (e: React.FormEvent) => void;
-  handleInput: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleInput: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   insertMention: (name: string) => void;
   addEmoji: (emoji: string) => void;
   handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   filteredMentions: string[];
 }
 
+function autoGrow(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+}
+
 export function MessageInput({
   channelName,
   input,
+  inputRef,
   showEmoji,
   setShowEmoji,
   showMentions,
@@ -39,8 +47,6 @@ export function MessageInput({
   handleFileSelect,
   filteredMentions,
 }: MessageInputProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
   return (
     <>
       {/* Reply indicator above input */}
@@ -94,14 +100,20 @@ export function MessageInput({
             >
               <Paperclip size={18} />
             </button>
-            <input
+            <textarea
               ref={inputRef}
               id="chat-input"
-              type="text"
               value={input}
               onChange={handleInput}
+              onInput={(e) => autoGrow(e.currentTarget)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  e.currentTarget.form?.requestSubmit();
+                }
+              }}
               placeholder={`Message #${channelName}`}
-              className="flex-1 bg-transparent border-none outline-none py-2.5 px-2 text-sm text-[var(--color-txt)] placeholder-[var(--color-txt-muted)] max-h-20"
+              className="flex-1 bg-transparent border-none outline-none py-2.5 px-2 text-sm text-[var(--color-txt)] placeholder-[var(--color-txt-muted)] resize-none max-h-40 leading-relaxed"
               autoFocus
             />
             <input

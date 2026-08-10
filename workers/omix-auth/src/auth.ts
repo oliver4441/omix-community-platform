@@ -1,4 +1,4 @@
-import type { Env } from "./env";
+import type { Env } from "../../shared/env";
 import {
   json,
   readJson,
@@ -8,9 +8,9 @@ import {
   hashPassword,
   appOrigin,
   workerOrigin,
-} from "./util";
+} from "../../shared/util";
 import { sendEmail } from "./email";
-import { getSessionUser, getBearer } from "./util";
+import { getSessionUser, getBearer } from "../../shared/util";
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
@@ -144,7 +144,8 @@ async function deleteAccount(env: Env, request: Request): Promise<Response> {
     env.DB.prepare("DELETE FROM presence WHERE session_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM stats WHERE session_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM typing WHERE session_id = ?").bind(user.id),
-    env.DB.prepare("DELETE FROM fcm_tokens WHERE session_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM push_subscriptions WHERE user_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM notifications WHERE target_user_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM notification_settings WHERE session_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM board_votes WHERE session_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM server_members WHERE user_id = ?").bind(user.id),
@@ -320,6 +321,7 @@ async function githubCallback(env: Env, request: Request): Promise<Response> {
     name?: string;
     email?: string | null;
     avatar_url?: string;
+    bio?: string | null;
   };
 
   // GitHub's public email may be hidden — fetch the verified list if needed.
@@ -373,6 +375,30 @@ async function githubCallback(env: Env, request: Request): Promise<Response> {
        scope = excluded.scope, updated_at = excluded.updated_at`
   )
     .bind(user.id, access_token, "read:user user:email repo", now(), now())
+    .run();
+
+  // Sync GitHub identity into the user's public profile (others can then see
+  // their GitHub overview + repos). Custom display names are preserved.
+  await env.DB.prepare(
+    `INSERT INTO profiles (id, session_id, name, avatar, color, github_username, bio, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(session_id) DO UPDATE SET
+       avatar = excluded.avatar,
+       github_username = excluded.github_username,
+       bio = CASE WHEN excluded.bio <> '' THEN excluded.bio ELSE profiles.bio END,
+       updated_at = excluded.updated_at`
+  )
+    .bind(
+      genId(),
+      user.id,
+      (ghUser.name || ghUser.login || "").slice(0, 40) || user.full_name || "",
+      ghUser.avatar_url || "",
+      "#a078ff",
+      ghUser.login || "",
+      ghUser.bio || "",
+      now(),
+      now()
+    )
     .run();
 
   const session = await issueSession(env, user.id as string);

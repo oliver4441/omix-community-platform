@@ -15,6 +15,9 @@ const eslintConfig = defineConfig([
     // Generated / committed artifacts that aren't source:
     "dist/**",
     "graphify-out/**",
+    // Node scripts (CommonJS require() is intentional here):
+    "scripts/**",
+    "netlify/functions/**",
   ]),
 ]);
 

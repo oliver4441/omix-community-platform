@@ -1,23 +1,35 @@
 import type { Metadata, Viewport } from "next";
-import { Hanken_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const hanken = Hanken_Grotesk({
+// Self-hosted fonts (from @fontsource) instead of next/font/google so the
+// static export builds without a network fetch from fonts.googleapis.com.
+// Same families/weights as before — visually identical, but hermetic.
+const hanken = localFont({
   variable: "--font-hanken",
-  subsets: ["latin"],
-  weight: ["400", "600", "700", "900"],
+  src: [
+    { path: "../../node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "../../node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "../../node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-700-normal.woff2", weight: "700", style: "normal" },
+    { path: "../../node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-900-normal.woff2", weight: "900", style: "normal" },
+  ],
 });
 
-const inter = Inter({
+const inter = localFont({
   variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  src: [
+    { path: "../../node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "../../node_modules/@fontsource/inter/files/inter-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "../../node_modules/@fontsource/inter/files/inter-latin-600-normal.woff2", weight: "600", style: "normal" },
+  ],
 });
 
-const jetbrains = JetBrains_Mono({
+const jetbrains = localFont({
   variable: "--font-jetbrains",
-  subsets: ["latin"],
-  weight: ["400", "600"],
+  src: [
+    { path: "../../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "../../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-600-normal.woff2", weight: "600", style: "normal" },
+  ],
 });
 
 export const metadata: Metadata = {

@@ -1,0 +1,26 @@
+name = "omix-auth"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+# Internal-only: no public routes and no workers.dev. Reachable exclusively
+# through the omix-gateway service binding, so gateway-stamped sessions and
+# its own bearer-token lookups are trustworthy.
+workers_dev = false
+
+# ── Database (D1, shared by all Omix workers) ──
+[[d1_databases]]
+binding = "DB"
+database_name = "omix-db"
+database_id = "55de740c-6c82-4291-b3ad-621398eb4854"
+migrations_dir = "../migrations"
+
+[vars]
+CORS_ORIGIN = "https://omix-systems-cd1af.web.app"
+# Frontend origin used for email links + GitHub OAuth redirects.
+APP_ORIGIN = "https://omix-systems-cd1af.web.app"
+
+# Secrets (wrangler secret put / CI — never commit):
+#   GITHUB_CLIENT_ID       — GitHub OAuth app client id
+#   GITHUB_CLIENT_SECRET   — GitHub OAuth app client secret
+#   GITHUB_WEBHOOK_SECRET  — secret for X-Hub-Signature-256 webhook verification
+#   RESEND_API_KEY         — transactional email (verification / password reset)
+#   EMAIL_FROM             — optional sender, e.g. "Omix <onboarding@resend.dev>"

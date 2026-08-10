@@ -80,11 +80,13 @@ function AppInner() {
       .catch(() => setVerifyError("This verification link is invalid or has expired."));
   }, [authLink, verifyDone]);
 
-  // Request notification permission after login.
+  // Request notification permission and re-assert the Web Push subscription
+  // after login (skipped if the user explicitly disabled push in settings).
   useEffect(() => {
     if (!user) return;
     const timer = setTimeout(() => {
       Store.requestNotificationPermission();
+      if (!Store.isPushDisabled()) Store.enablePush().catch(() => {});
     }, 5000);
     return () => clearTimeout(timer);
   }, [user]);

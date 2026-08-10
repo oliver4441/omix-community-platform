@@ -4,7 +4,7 @@ import { ChatClient, LogLevel } from "@ably/chat";
 import type { Room } from "@ably/chat";
 import { getAblyAuthUrl } from "@/lib/api";
 
-// Fallback key — used only until the omix-api worker is deployed and
+// Fallback key — used only until the omix-gateway worker is deployed and
 // NEXT_PUBLIC_API_BASE_URL is set (then the key can be removed entirely).
 const ABLY_KEY = "DLQnWQ.ilKOxQ:aBK0tJBczKW2zUJ04TsRUkgpT0l4T5gMMiRc_3-UkVg";
 
