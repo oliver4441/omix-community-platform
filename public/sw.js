@@ -1,34 +1,12 @@
-// Firebase Cloud Messaging Service Worker + Cache
-importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
-importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
+// Omix service worker — PWA caching + Web Push notifications (VAPID).
+// Push payloads are encrypted (RFC 8291) by the omix-api worker; the browser
+// decrypts them before firing this handler, so event.data is plain JSON.
 
-// Clear all old caches on activate
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => caches.delete(cacheName))
-      );
-    }).then(() => self.clients.claim())
-  );
-});
-
-firebase.initializeApp({
-  apiKey: "AIzaSy...45Zg",
-  authDomain: "omix-systems-cd1af.firebaseapp.com",
-  projectId: "omix-systems-cd1af",
-  storageBucket: "omix-systems-cd1af.firebasestorage.app",
-  messagingSenderId: "458479471215",
-  appId: "1:458479471215:web:c0210748800fdf51ff5b9a",
-});
-
-const messaging = firebase.messaging();
-
-var CACHE_NAME = 'omix-cache-v5';
-var STATIC_CACHE = 'omix-static-v5';
+var CACHE_NAME = 'omix-cache-v6';
+var STATIC_CACHE = 'omix-static-v6';
 
 // Install — skip waiting, activate immediately
-self.addEventListener('install', function(event) {
+self.addEventListener('install', function() {
   self.skipWaiting();
 });
 
@@ -105,40 +83,37 @@ self.addEventListener('fetch', function(event) {
       return networkResponse;
     }).catch(function() {
       return caches.match(event.request).then(function(cached) {
-        if (cached) return cached;
-        if (requestUrl.pathname === '/' || requestUrl.pathname === '/index.html') {
-          return caches.match('/index.html');
-        }
-        return caches.match('/index.html');
+        return cached || caches.match('/index.html');
       });
     })
   );
 });
 
-// Handle background push messages
-messaging.onBackgroundMessage(function(payload) {
-  var data = payload.data || {};
-  var notificationTitle = data.title || payload.notification && payload.notification.title || 'New message';
-  var notificationBody = data.body || payload.notification && payload.notification.body || '';
-  var channelId = data.channelId || '';
-  var serverId = data.serverId || '';
+// Web Push — payload is already decrypted by the browser; data is JSON
+// { title, body, data: { channelId, serverId, ... } } from the omix-api worker.
+self.addEventListener('push', function(event) {
+  var title = 'Omix';
+  var body = '';
+  var data = {};
+  try {
+    var payload = event.data ? event.data.json() : {};
+    title = payload.title || title;
+    body = payload.body || body;
+    data = payload.data || data;
+  } catch (err) {
+    // Malformed / empty payload — show a generic notification.
+  }
 
   var notificationOptions = {
-    body: notificationBody,
+    body: body,
     icon: '/logo-192.png',
     badge: '/logo-192.png',
-    tag: channelId || 'omix',
-    data: {
-      channelId: channelId,
-      serverId: serverId,
-      click_action: 'open_channel',
-    },
+    tag: data.channelId || 'omix',
+    data: data,
     vibrate: [100, 50, 100],
-    requireInteraction: true,
-    silent: false,
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  event.waitUntil(self.registration.showNotification(title, notificationOptions));
 });
 
 // Handle notification click

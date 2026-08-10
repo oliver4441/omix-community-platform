@@ -7,19 +7,26 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "workers:dev": "wrangler dev -c workers/omix-api/wrangler.toml",
-    "workers:deploy": "wrangler deploy -c workers/omix-api/wrangler.toml && wrangler deploy -c workers/omix-cron/wrangler.toml",
+    "workers:dev": "wrangler dev -c workers/omix-gateway/wrangler.toml",
+    "workers:deploy": "for w in omix-auth omix-chat omix-social omix-servers omix-notifications omix-uploads omix-gateway omix-cron; do echo \"==> deploying $w\"; wrangler deploy -c workers/$w/wrangler.toml || exit 1; done",
     "workers:typecheck": "tsc -p workers/tsconfig.json"
   },
   "dependencies": {
     "@ably/chat": "^1.4.0",
+    "@fontsource/hanken-grotesk": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
     "@jitsi/react-sdk": "^1.4.4",
     "@supabase/supabase-js": "^2.110.8",
-    "firebase": "^8.10.1",
+    "highlight.js": "^11.11.1",
     "lucide-react": "^0.516.0",
     "next": "16.2.11",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260801.1",

@@ -12,15 +12,18 @@ import type {
   UserStats,
   CallLogEntry,
 } from "@/lib/types";
+import type { UserStatus } from "@/lib/api";
 
 const FALLBACK_SESSION_ID = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 const TYPING_TIMEOUT = 3000;
 const PAGE_SIZE = 50;
 const POLL_MS = 10000;
 
+let myStatus: UserStatus = "online";
+let myStatusText = "";
+
 function getSessionId(): string {
-  // The signed-in user id from the omix-api session token (replaces the old
-  // Supabase auth user id).
+  // The signed-in user id from the omix-gateway session token.
   if (typeof window !== "undefined") {
     try {
       const uid = getUserId();
@@ -153,6 +156,15 @@ function ls(): typeof localStorage {
   return { getItem: () => null, setItem: () => {} } as unknown as typeof localStorage;
 }
 
+/** Convert a base64url string to a Uint8Array (Web Push applicationServerKey). */
+function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
+  const pad = base64.replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(pad + "=".repeat((4 - (pad.length % 4)) % 4));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
 const state: StoreState = {
   servers: [],
   channels: [],
@@ -209,7 +221,7 @@ function poll(fn: () => void, ms: number): () => void {
   return () => clearInterval(t);
 }
 
-// Upload through the omix-api worker (R2 storage).
+// Upload through the omix-gateway worker (KV storage).
 function uploadToStorage(file: File, kind: string): Promise<string> {
   return api.upload(file, kind);
 }
@@ -281,7 +293,7 @@ export const Store = {
   // === ADMIN ===
   async verifyAdminPassword(password: string): Promise<boolean> {
     // Prefer the worker (config table); fall back to a local first-time check
-    // when the omix-api worker isn't reachable (e.g. dev without
+    // when the omix-gateway worker isn't reachable (e.g. dev without
     // NEXT_PUBLIC_API_BASE_URL).
     try {
       const { valid } = await api.verifyAdminPassword(password);
@@ -823,9 +835,17 @@ export const Store = {
     await beat();
     setInterval(beat, 30000);
 
+    const payload = () => ({
+      name: displayName,
+      color,
+      online: true,
+      status: myStatus,
+      customStatus: myStatusText,
+    });
+
     const enterAbly = () => {
       getRoom("presence-main")
-        .then((room) => room.presence.enter({ name: displayName, color, online: true }))
+        .then((room) => room.presence.enter(payload()))
         .catch(() => {});
     };
     const leaveAbly = () => {
@@ -835,7 +855,9 @@ export const Store = {
     };
     const updateAbly = (online: boolean) => {
       getRoom("presence-main")
-        .then((room) => room.presence.update({ name: displayName, color, online }))
+        .then((room) =>
+          room.presence.update({ name: displayName, color, online, status: myStatus, customStatus: myStatusText })
+        )
         .catch(() => {});
     };
 
@@ -859,6 +881,27 @@ export const Store = {
     }
   },
 
+  async setStatus(status: UserStatus, statusText: string) {
+    myStatus = status;
+    myStatusText = statusText;
+    try {
+      await api.setStatus(status, statusText);
+    } catch {
+      /* persistence best-effort */
+    }
+    getRoom("presence-main")
+      .then((room) =>
+        room.presence.update({
+          name: state.displayName,
+          color: getUserColor(state.displayName),
+          online: true,
+          status,
+          customStatus: statusText,
+        })
+      )
+      .catch(() => {});
+  },
+
   subscribePresence(cb: (users: User[]) => void) {
     let pollTimer: ReturnType<typeof setInterval> | null = null;
     let ablyUnsub: (() => void) | null = null;
@@ -880,6 +923,8 @@ export const Store = {
               name: (data.name as string) || m.clientId,
               id: m.clientId,
               color: (data.color as string) || "#8B5CF6",
+              status: (data.status as User["status"]) || "online",
+              customStatus: (data.customStatus as string) || "",
             };
           }) as User[];
         state.onlineUsers = users;
@@ -1055,20 +1100,70 @@ export const Store = {
     return result === "granted";
   },
 
-  async saveFCMToken(): Promise<string | null> {
-    // FCM is out of scope on the Cloudflare stack — web push can be added later.
-    return null;
+  /**
+   * Subscribe this browser to Web Push (VAPID) and register the subscription
+   * with the omix-gateway worker so DMs/mentions can be delivered as push
+   * notifications. Idempotent — safe to call on every login.
+   */
+  async enablePush(): Promise<boolean> {
+    if (typeof window === "undefined") return false;
+    const granted = await this.requestNotificationPermission();
+    if (!granted) return false;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const { publicKey } = await api.getVapidPublicKey();
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+      }
+      const json = sub.toJSON();
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return false;
+      await api.savePushSubscription({
+        endpoint: json.endpoint,
+        p256dh: json.keys.p256dh,
+        auth: json.keys.auth,
+        userAgent: navigator.userAgent,
+      });
+      try {
+        ls().removeItem("omix_push_disabled");
+      } catch {}
+      return true;
+    } catch (err) {
+      console.warn("[push] enable failed", err);
+      return false;
+    }
   },
 
-  async sendPushNotification(
-    userId: string,
-    title: string,
-    body: string,
-    data?: Record<string, string>
-  ): Promise<void> {
-    // Route through the omix-api worker, which queues into the notifications
-    // table. No-op if the worker isn't deployed.
-    await api.queuePushNotification(userId, title, body, data);
+  /** Remove the current browser's subscription (settings toggle off / logout). */
+  async disablePush(): Promise<void> {
+    try {
+      ls().setItem("omix_push_disabled", "1");
+    } catch {}
+    if (typeof window === "undefined") return;
+    if (!("serviceWorker" in navigator)) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        api.deletePushSubscription(sub.endpoint).catch(() => {});
+        await sub.unsubscribe();
+      }
+    } catch (err) {
+      console.warn("[push] disable failed", err);
+    }
+  },
+
+  /** True when the user explicitly turned push off in settings. */
+  isPushDisabled(): boolean {
+    try {
+      return ls().getItem("omix_push_disabled") === "1";
+    } catch {
+      return false;
+    }
   },
 
   // === CALL LOG ===

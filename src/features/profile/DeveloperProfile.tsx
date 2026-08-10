@@ -42,11 +42,20 @@ interface DevProfile {
 export function DeveloperProfile({
   isMobile,
   displayName,
+  profileUserId,
+  onBack,
 }: {
   isMobile: boolean;
   displayName: string;
+  /** When set, shows ANOTHER user's profile instead of your own. */
+  profileUserId?: string | null;
+  onBack?: () => void;
 }) {
+  // isMobile is part of the shared view prop contract; layout is responsive on its own.
+  void isMobile;
   const { user, signInWithGithub } = useAuth();
+  const isOwn = !profileUserId || profileUserId === user?.uid;
+  const targetId = (isOwn ? user?.uid : profileUserId) || null;
   const [profile, setProfile] = useState<DevProfile | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [skills, setSkills] = useState<string[]>([]);
@@ -60,10 +69,14 @@ export function DeveloperProfile({
   const [githubRefreshing, setGithubRefreshing] = useState(false);
 
   useEffect(() => {
-    const uid = user?.uid;
-    if (!uid) return;
+    if (!targetId) return;
     let active = true;
-    api.getProfile(uid).then((p) => {
+    const resetView = () => {
+      setProfile(null);
+      setGithub(null);
+    };
+    resetView();
+    api.getProfile(targetId).then((p) => {
       if (!active || !p) return;
       setProfile(p);
       setSkills(p.skills || []);
@@ -71,14 +84,17 @@ export function DeveloperProfile({
       setStatusText(p.statusText || "");
       setStatusDraft(p.statusText || "");
     });
-    Store.getStats(uid).then((s) => active && setStats(s));
-    const unsubStats = Store.subscribeStats((s) => active && setStats(s));
+    Store.getStats(targetId).then((s) => active && setStats(s));
+    const unsubStats = isOwn
+      ? Store.subscribeStats((s) => active && setStats(s))
+      : () => {};
 
     const loadGithub = () => {
       setGithubLoading(true);
-      api
-        .getGithubRepos()
-        .then((g) => active && setGithub(g))
+      const p = isOwn
+        ? api.getGithubRepos()
+        : api.getProfileGithub(targetId);
+      p.then((g) => active && setGithub(g))
         .catch(() => active && setGithub({ connected: false }))
         .finally(() => active && setGithubLoading(false));
     };
@@ -86,14 +102,19 @@ export function DeveloperProfile({
 
     return () => {
       active = false;
-      void unsubStats();
+      unsubStats();
     };
-  }, [user?.uid]);
+  }, [targetId, isOwn]);
 
   const refreshGithub = async () => {
     setGithubRefreshing(true);
     try {
-      setGithub(await api.getGithubRepos());
+      const g = isOwn && targetId
+        ? await api.getGithubRepos()
+        : targetId
+          ? await api.getProfileGithub(targetId)
+          : { connected: false };
+      setGithub(g);
     } catch {
       /* keep the last known state */
     } finally {
@@ -170,6 +191,17 @@ export function DeveloperProfile({
       </header>
 
       <main className="flex-1 w-full max-w-5xl mx-auto p-4 lg:p-6 flex flex-col gap-6">
+        {/* Back (viewing someone else's profile) */}
+        {!isOwn && (
+          <button
+            onClick={() => onBack?.()}
+            className="self-start flex items-center gap-1.5 px-3 py-1.5 rounded-md font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors"
+          >
+            <Mso name="arrow_back" size={16} />
+            Back
+          </button>
+        )}
+
         {/* Profile header */}
         <section className="flex flex-col lg:flex-row items-start gap-5">
           <div
@@ -232,7 +264,8 @@ export function DeveloperProfile({
           </div>
         </section>
 
-        {/* Status */}
+        {/* Status (editable only on your own profile) */}
+        {isOwn && (
         <section className="flex flex-col gap-3">
           <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider flex items-center gap-2">
             <Mso name="monitor_heart" size={18} className="text-secondary" />
@@ -274,6 +307,7 @@ export function DeveloperProfile({
             </div>
           </div>
         </section>
+        )}
 
         {/* GitHub Overview */}
         <section className="flex flex-col gap-3">
@@ -328,33 +362,39 @@ export function DeveloperProfile({
                   {repos.length} repositories synced from GitHub
                 </p>
               </div>
-              <button
-                onClick={refreshGithub}
-                disabled={githubRefreshing}
-                className="btn-ghost !text-[11px] !px-4 !py-1.5 shrink-0 disabled:opacity-50"
-              >
-                <Mso name="refresh" size={16} className={githubRefreshing ? "animate-spin" : ""} />
-                Refresh
-              </button>
+              {isOwn && (
+                <button
+                  onClick={refreshGithub}
+                  disabled={githubRefreshing}
+                  className="btn-ghost !text-[11px] !px-4 !py-1.5 shrink-0 disabled:opacity-50"
+                >
+                  <Mso name="refresh" size={16} className={githubRefreshing ? "animate-spin" : ""} />
+                  Refresh
+                </button>
+              )}
             </div>
           ) : (
             <div className="glass-panel rounded-lg p-5 flex items-center gap-4">
               <Mso name="link" size={24} className="text-on-surface-variant" />
               <div className="flex-1">
                 <p className="font-body-md text-body-md text-on-surface font-medium">
-                  Connect GitHub to sync your repositories
+                  {isOwn ? "Connect GitHub to sync your repositories" : "No GitHub account linked"}
                 </p>
                 <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Link your account to show your repos, followers and activity.
+                  {isOwn
+                    ? "Link your account to show your repos, followers and activity."
+                    : "This user hasn't connected their GitHub account yet."}
                 </p>
               </div>
-              <button
-                onClick={() => void signInWithGithub()}
-                className="btn-ghost !text-[11px] !px-4 !py-1.5 shrink-0"
-              >
-                <Mso name="code" size={16} />
-                Connect
-              </button>
+              {isOwn && (
+                <button
+                  onClick={() => void signInWithGithub()}
+                  className="btn-ghost !text-[11px] !px-4 !py-1.5 shrink-0"
+                >
+                  <Mso name="code" size={16} />
+                  Connect
+                </button>
+              )}
             </div>
           )}
         </section>
@@ -471,16 +511,19 @@ export function DeveloperProfile({
                   className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary font-code-md text-code-md text-xs border border-primary/20"
                 >
                   {skill}
-                  <button
-                    onClick={() => removeSkill(skill)}
-                    className="hover:text-error transition-colors"
-                    aria-label={`Remove ${skill}`}
-                  >
-                    <Mso name="close" size={14} />
-                  </button>
+                  {isOwn && (
+                    <button
+                      onClick={() => removeSkill(skill)}
+                      className="hover:text-error transition-colors"
+                      aria-label={`Remove ${skill}`}
+                    >
+                      <Mso name="close" size={14} />
+                    </button>
+                  )}
                 </span>
               ))}
             </div>
+            {isOwn && (
             <div className="flex flex-wrap items-center gap-2">
               <input
                 className="input-field !py-1.5 !w-40"
@@ -504,6 +547,7 @@ export function DeveloperProfile({
                 </button>
               ))}
             </div>
+            )}
           </div>
         </section>
 

@@ -8,17 +8,20 @@
  *     feed_posts table — each source self-throttles via a cooldown, so this
  *     effectively refreshes every ~25 min per source
  *
- * Uses the same D1 database as omix-api.
+ * Uses the same D1 database as the gateway and domain services.
  */
 
 import { refreshFeed, type FeedEnv } from "../../feed/ingest";
+import { deliverPending } from "../../shared/push";
 
 export interface Env extends FeedEnv {
   DB: D1Database;
+  VAPID_PRIVATE_KEY?: string;
+  VAPID_SUBJECT?: string;
 }
 
-export default {
-  async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
+const cronWorker = {
+  async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
     const typingCutoff = new Date(Date.now() - 15_000).toISOString();
     const presenceCutoff = new Date(Date.now() - 120_000).toISOString();
 
@@ -39,5 +42,15 @@ export default {
     } catch (err) {
       console.error("[omix-cron] feed refresh failed:", err);
     }
+
+    // Web push — deliver queued notifications (DM / mention / GitHub webhook).
+    try {
+      const r = await deliverPending(env);
+      console.log("[omix-cron] push delivery:", JSON.stringify(r));
+    } catch (err) {
+      console.error("[omix-cron] push delivery failed:", err);
+    }
   },
 };
+
+export default cronWorker;

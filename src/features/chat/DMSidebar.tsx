@@ -40,7 +40,9 @@ export function DMSidebar({
     const unsubPresence = Store.subscribePresence(setOnlineUsers);
 
     unreadInterval.current = setInterval(
-      () => setDmChannels([...dmChannels]),
+      // Functional update — avoids a stale-closure on `dmChannels` while
+      // still forcing a re-render every 2s so unread counts stay fresh.
+      () => setDmChannels((dms) => [...dms]),
       2000
     );
 

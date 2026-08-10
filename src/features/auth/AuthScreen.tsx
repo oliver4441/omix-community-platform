@@ -56,11 +56,15 @@ export function AuthScreen({
       const code = e.code || "";
       if (code === "invalid_credentials" || msg.includes("invalid login credentials")) {
         setError("Invalid email or password");
-      } else if (code === "user_already_exists") {
+      } else if (code === "email_taken" || code === "user_already_exists") {
         setError("An account with this email already exists");
-      } else if (code === "weak_password" || msg.includes("password should be at least")) {
+      } else if (
+        code === "password_too_short" ||
+        code === "weak_password" ||
+        msg.includes("password should be at least")
+      ) {
         setError("Password must be at least 6 characters");
-      } else if (code === "validation_failed" || msg.includes("invalid email")) {
+      } else if (code === "invalid_email" || code === "validation_failed" || msg.includes("invalid email")) {
         setError("Please enter a valid email address");
       } else if (msg.includes("email not confirmed") || code === "email_not_confirmed") {
         if (onVerifyPending) {
@@ -86,7 +90,7 @@ export function AuthScreen({
     } catch (err: unknown) {
       const e = err as { message?: string };
       setError(
-        e.message || "GitHub sign-in unavailable — enable the GitHub provider in Supabase"
+        e.message || "GitHub sign-in unavailable — GitHub OAuth is not configured on the backend (see docs/DEPLOY.md)"
       );
       setGithubBusy(false);
     }

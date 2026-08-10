@@ -1,1 +1,1 @@
-export type AppView = "chat" | "dms" | "boards" | "feed" | "profile" | "settings";
+export type AppView = "chat" | "dms" | "boards" | "feed" | "snippets" | "profile" | "settings";

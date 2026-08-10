@@ -23,7 +23,7 @@ export function LandingPage({
       const e = err as { message?: string };
       setGithubError(
         e.message ||
-          "GitHub sign-in unavailable — enable the GitHub provider in Supabase"
+          "GitHub sign-in unavailable — GitHub OAuth is not configured on the backend (see docs/DEPLOY.md)"
       );
       setGithubBusy(false);
     }

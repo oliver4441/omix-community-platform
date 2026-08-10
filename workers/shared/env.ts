@@ -8,8 +8,14 @@ export interface Env {
   ABLY_API_KEY: string;
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
+  /** Secret used to verify GitHub webhook signatures (X-Hub-Signature-256). */
+  GITHUB_WEBHOOK_SECRET?: string;
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
+  /** Web Push VAPID private key (base64url PKCS8) — see scripts/generate-vapid.js. */
+  VAPID_PRIVATE_KEY?: string;
+  /** VAPID "sub" claim, e.g. mailto:admin@example.com */
+  VAPID_SUBJECT?: string;
 
   // Vars
   CORS_ORIGIN?: string;

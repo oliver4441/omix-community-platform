@@ -12,6 +12,7 @@ const NAV_ITEMS: { view: AppView; label: string; icon: string }[] = [
   { view: "chat", label: "Threads", icon: "chat" },
   { view: "boards", label: "Forums", icon: "forum" },
   { view: "feed", label: "Updates", icon: "campaign" },
+  { view: "snippets", label: "Snippets", icon: "data_object" },
   { view: "dms", label: "Calls", icon: "videocam" },
 ];
 

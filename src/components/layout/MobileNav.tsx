@@ -7,6 +7,7 @@ const TABS: { view: AppView; label: string; icon: string }[] = [
   { view: "chat", label: "Chat", icon: "chat_bubble" },
   { view: "boards", label: "Boards", icon: "dashboard_customize" },
   { view: "feed", label: "Feed", icon: "rss_feed" },
+  { view: "snippets", label: "Code", icon: "data_object" },
   { view: "dms", label: "Voice", icon: "call" },
   { view: "profile", label: "Profile", icon: "person" },
 ];

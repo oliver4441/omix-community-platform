@@ -13,10 +13,9 @@ import {
   Settings,
   Users,
   MessageSquare,
-  Image,
+  Image as ImageIcon,
   X,
   Copy,
-  LogOut,
   Loader2,
 } from '@/components/ui/icons';
 import { useToast } from '@/components/ui/Toast';
@@ -393,7 +392,7 @@ function CreateServerModal({
                 />
               ) : (
                 <div className="w-16 h-16 radius-md bg-[var(--color-bg-mid)] flex items-center justify-center text-[var(--color-txt-muted)]">
-                  <Image size={24} />
+                  <ImageIcon size={24} />
                 </div>
               )}
             </div>

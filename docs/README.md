@@ -1,10 +1,16 @@
 # Omix Community — Docs
 
-- **Deployment:** [`DEPLOY.md`](./DEPLOY.md) — full guide (Vercel + Cloudflare Workers + Supabase)
+- **Deployment:** [`DEPLOY.md`](./DEPLOY.md) — full guide (Firebase/Vercel frontend + Cloudflare Workers backend: gateway + domain services + cron)
 - **Readiness:** [`DEPLOYMENT_READINESS.md`](./DEPLOYMENT_READINESS.md) — current checklist
-- **Workers:** [`CLOUDFLARE_WORKERS.md`](./CLOUDFLARE_WORKERS.md) — API layer details
+- **Workers:** [`CLOUDFLARE_WORKERS.md`](./CLOUDFLARE_WORKERS.md) — API layer details, route table, and how to add a new endpoint
 - **Build troubleshooting:** [`NEXT_BUILD_TROUBLESHOOTING.md`](./NEXT_BUILD_TROUBLESHOOTING.md)
 - **Constitution:** [`CONSTITUTION.md`](./CONSTITUTION.md) — engineering principles
+
+Backend layout: `workers/shared/` (env, util, push helpers) + `omix-gateway`
+(the only public URL) + per-domain services (`omix-auth`, `omix-chat`,
+`omix-social`, `omix-servers`, `omix-notifications`, `omix-uploads`) +
+`omix-cron` (scheduled). Schema is D1 SQLite in `workers/migrations/`. See
+[`AGENTS.md`](../AGENTS.md) for the module map and the route-adding walkthrough.
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 

@@ -178,7 +178,7 @@ export function BoardroomFeed(props: {
           <div className="glass-panel rounded-lg p-8 flex flex-col items-center gap-3 text-center">
             <Mso name="forum" size={40} className="text-on-surface-variant" />
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Boardroom posts aren&apos;t available yet. Deploy the omix-api
+              Boardroom posts aren&apos;t available yet. Deploy the omix-gateway
               worker to enable them.
             </p>
           </div>

@@ -11,6 +11,7 @@ import { DMSidebar } from "@/features/chat/DMSidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { BoardroomFeed } from "@/features/boardroom/BoardroomFeed";
 import { FeedPage } from "@/features/feed/FeedPage";
+import { SnippetsPage } from "@/features/snippets/SnippetsPage";
 import { DeveloperProfile } from "@/features/profile/DeveloperProfile";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { WorkspaceDiscovery } from "@/features/onboarding/WorkspaceDiscovery";
@@ -26,6 +27,8 @@ export function AppLayout() {
   const [serversLoaded, setServersLoaded] = useState(false);
   const [discoveryDismissed, setDiscoveryDismissed] = useState(false);
   const [boardDraft, setBoardDraft] = useState<{ title: string; body?: string; category?: string } | null>(null);
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
+  const [prevView, setPrevView] = useState<AppView>("chat");
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -33,6 +36,29 @@ export function AppLayout() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  // Clicking a user anywhere (e.g. a message author) opens their profile.
+  useEffect(() => {
+    const open = (e: Event) => {
+      const detail = (e as CustomEvent<{ userId?: string }>).detail;
+      if (!detail?.userId) return;
+      setPrevView(view);
+      setProfileUserId(detail.userId);
+      setView("profile");
+    };
+    window.addEventListener("openProfile", open);
+    return () => window.removeEventListener("openProfile", open);
+  }, [view]);
+
+  // Nav profile button always opens YOUR profile (clear any viewed user).
+  const goView = (v: AppView) => {
+    if (v !== "profile") {
+      setView(v);
+      return;
+    }
+    setProfileUserId(null);
+    setView("profile");
+  };
 
   // First-run onboarding: show workspace discovery while the user has no
   // workspaces. Creating or joining one (realtime update) hides it again.
@@ -68,7 +94,7 @@ export function AppLayout() {
       <ErrorBoundary>
         <WorkspaceRail
           currentView={view}
-          onNavigate={setView}
+          onNavigate={goView}
           displayName={user?.displayName || "User"}
           avatarUrl={user?.photoURL}
         />
@@ -108,9 +134,18 @@ export function AppLayout() {
               }}
             />
           </ErrorBoundary>
+        ) : view === "snippets" ? (
+          <ErrorBoundary>
+            <SnippetsPage isMobile={isMobile} />
+          </ErrorBoundary>
         ) : view === "profile" ? (
           <ErrorBoundary>
-            <DeveloperProfile isMobile={isMobile} displayName={user?.displayName || "User"} />
+            <DeveloperProfile
+              isMobile={isMobile}
+              displayName={user?.displayName || "User"}
+              profileUserId={profileUserId}
+              onBack={() => setView(prevView)}
+            />
           </ErrorBoundary>
         ) : view === "settings" ? (
           <ErrorBoundary>
@@ -142,7 +177,7 @@ export function AppLayout() {
       ) : null}
 
       {/* Mobile bottom nav */}
-      {isMobile && <MobileNav currentView={view} setView={setView} />}
+      {isMobile && <MobileNav currentView={view} setView={goView} />}
 
       {/* Global call overlay — stays mounted across views so calls survive navigation */}
       <CallPanel />

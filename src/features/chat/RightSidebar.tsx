@@ -22,6 +22,19 @@ function timeAgo(ts: unknown): string {
   return `${d}d ago`;
 }
 
+function statusDotColor(status: User["status"] | undefined): string {
+  switch (status) {
+    case "idle":
+      return "#fbbf24";
+    case "dnd":
+      return "#f87171";
+    case "offline":
+      return "var(--color-outline)";
+    default:
+      return "var(--color-secondary)";
+  }
+}
+
 export function RightSidebar({
   pins,
   onlineUsers,
@@ -109,11 +122,18 @@ export function RightSidebar({
                           u.name.charAt(0).toUpperCase()
                         )}
                       </div>
-                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-secondary rounded-full border-2 border-surface-container-low" />
+                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-surface-container-low" style={{ backgroundColor: statusDotColor(u.status) }} />
                     </div>
-                    <span className="font-body-sm text-body-sm text-on-surface truncate">
-                      {u.name}
-                    </span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-body-sm text-body-sm text-on-surface truncate">
+                        {u.name}
+                      </span>
+                      {u.customStatus && (
+                        <span className="font-body-sm text-[10px] text-on-surface-variant truncate">
+                          {u.customStatus}
+                        </span>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>

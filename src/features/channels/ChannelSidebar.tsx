@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
 import { Store, getUserColor } from "@/lib/store";
-import type { Channel, User, UserStats } from "@/lib/types";
+import type { Channel, User } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmModal";
@@ -73,7 +73,7 @@ function SettingsModal({
       password_too_short: "New password must be at least 6 characters",
       unauthorized: "You must be signed in",
       no_password: "This account has no password (GitHub sign-in)",
-      api_not_configured: "Backend not configured — deploy the omix-api worker",
+      api_not_configured: "Backend not configured — deploy the omix-gateway worker",
     };
     return (code && map[code]) || fallback;
   };

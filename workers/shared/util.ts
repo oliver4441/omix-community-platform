@@ -117,6 +117,44 @@ export async function requireUser(
   return { user };
 }
 
+// ── Gateway → service auth forwarding ──
+// The omix-gateway worker is the only public entrypoint. It validates the
+// session (D1), then forwards the request to the owning service with the
+// caller stamped as X-Omix-User-* headers. Services reconstruct the
+// SessionUser from those headers and trust them because they are only
+// reachable internally via service bindings (workers_dev = false).
+
+const USER_HEADER_PREFIX = "x-omix-user-";
+
+/** Stamp an authenticated caller onto a request before forwarding it. */
+export function withUserHeaders(request: Request, user: SessionUser): Request {
+  const headers = new Headers(request.headers);
+  headers.set(`${USER_HEADER_PREFIX}id`, user.id);
+  headers.set(`${USER_HEADER_PREFIX}email`, user.email);
+  headers.set(`${USER_HEADER_PREFIX}name`, user.fullName);
+  headers.set(`${USER_HEADER_PREFIX}avatar`, user.avatarUrl);
+  headers.set(`${USER_HEADER_PREFIX}email-confirmed`, user.emailConfirmedAt || "");
+  headers.set(`${USER_HEADER_PREFIX}github`, user.githubUsername);
+  headers.set(`${USER_HEADER_PREFIX}admin`, user.isAdmin ? "1" : "0");
+  return new Request(request, { headers });
+}
+
+/** Reconstruct the caller from gateway-stamped headers; null = not forwarded. */
+export function sessionFromHeaders(request: Request): SessionUser | null {
+  const id = request.headers.get(`${USER_HEADER_PREFIX}id`);
+  if (!id) return null;
+  return {
+    id,
+    email: request.headers.get(`${USER_HEADER_PREFIX}email`) || "",
+    fullName: request.headers.get(`${USER_HEADER_PREFIX}name`) || "",
+    avatarUrl: request.headers.get(`${USER_HEADER_PREFIX}avatar`) || "",
+    emailConfirmedAt:
+      request.headers.get(`${USER_HEADER_PREFIX}email-confirmed`) || null,
+    githubUsername: request.headers.get(`${USER_HEADER_PREFIX}github`) || "",
+    isAdmin: request.headers.get(`${USER_HEADER_PREFIX}admin`) === "1",
+  };
+}
+
 export function appOrigin(env: Env, request: Request): string {
   return env.APP_ORIGIN || new URL(request.url).origin;
 }

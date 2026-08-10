@@ -1,0 +1,6 @@
+# Local dev secrets for omix-gateway (wrangler dev). Copy to .dev.vars
+# and fill in real values — never commit .dev.vars.
+ABLY_API_KEY=your-ably-api-key
+VAPID_PRIVATE_KEY=your-base64url-pkcs8-key
+VAPID_SUBJECT=mailto:admin@omix.app
+# TOKEN_AUTH_SECRET=optional-shared-secret

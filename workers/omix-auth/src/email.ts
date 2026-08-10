@@ -1,4 +1,4 @@
-import type { Env } from "./env";
+import type { Env } from "../../shared/env";
 
 /** Send a transactional email via Resend (REST — no SDK needed). */
 export async function sendEmail(
@@ -8,7 +8,7 @@ export async function sendEmail(
   html: string
 ): Promise<boolean> {
   if (!env.RESEND_API_KEY) {
-    console.warn("[omix-api] RESEND_API_KEY not set — skipping email to", to);
+    console.warn("[omix-auth] RESEND_API_KEY not set — skipping email to", to);
     return false;
   }
   const res = await fetch("https://api.resend.com/emails", {
