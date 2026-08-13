@@ -47,6 +47,9 @@ export {
   PhoneMissed,
   Monitor,
   History,
+  Ban,
+  UserMinus,
+  MessageSquareWarning,
   // Status
   Check,
   CheckCheck,
@@ -54,6 +57,8 @@ export {
   AlertTriangle,
   Info,
   Loader2,
+  WifiOff,
+  Lock,
   // Files
   FileText,
   FileImage,

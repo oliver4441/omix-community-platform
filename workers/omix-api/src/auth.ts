@@ -11,10 +11,19 @@ import {
 } from "./util";
 import { sendEmail } from "./email";
 import { getSessionUser, getBearer } from "./util";
+import { authRateLimit } from "./ratelimit";
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+function clientIp(request: Request): string {
+  return (
+    request.headers.get("CF-Connecting-IP") ||
+    request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() ||
+    "unknown"
+  );
+}
 
 function toUser(row: Record<string, unknown>) {
   return {
@@ -157,6 +166,8 @@ async function deleteAccount(env: Env, request: Request): Promise<Response> {
 }
 
 async function signup(env: Env, request: Request): Promise<Response> {
+  const rl = await authRateLimit(env, "signup", clientIp(request));
+  if (!rl.ok) return json({ error: "rate_limited" }, 429, env);
   const { email, password, displayName } = await readJson<{
     email?: string;
     password?: string;
@@ -205,6 +216,8 @@ async function verifyEmail(env: Env, request: Request): Promise<Response> {
 async function login(env: Env, request: Request): Promise<Response> {
   const { email, password } = await readJson<{ email?: string; password?: string }>(request);
   const em = (email || "").trim().toLowerCase();
+  const rl = await authRateLimit(env, em, clientIp(request));
+  if (!rl.ok) return json({ error: "rate_limited" }, 429, env);
   const user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(em).first<
     Record<string, unknown>
   >();
@@ -221,6 +234,8 @@ async function login(env: Env, request: Request): Promise<Response> {
 }
 
 async function forgot(env: Env, request: Request): Promise<Response> {
+  const rl = await authRateLimit(env, "forgot", clientIp(request));
+  if (!rl.ok) return json({ error: "rate_limited" }, 429, env);
   const { email } = await readJson<{ email?: string }>(request);
   const em = (email || "").trim().toLowerCase();
   const user = await env.DB.prepare("SELECT id, email FROM users WHERE email = ?").bind(em).first<{

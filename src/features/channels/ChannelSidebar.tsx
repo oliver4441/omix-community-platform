@@ -12,6 +12,7 @@ import type { Channel, User, UserStats } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmModal";
+import { ModerationPanel } from "@/features/moderation/ModerationPanel";
 import {
   Hash,
   Plus,
@@ -523,6 +524,7 @@ export function ChannelSidebar({
   const [newChanIconPreview, setNewChanIconPreview] = useState("");
   const [unreadCounts, setUnreadCounts] = useState(Store.unreadCounts);
   const [showSettings, setShowSettings] = useState(false);
+  const [showModeration, setShowModeration] = useState(false);
   const [avatar, setAvatar] = useState("");
   const [userStats, setUserStats] = useState<{
     level: number;
@@ -672,6 +674,17 @@ export function ChannelSidebar({
             ADMIN
           </span>
         )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowModeration(true);
+          }}
+          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] text-[var(--color-txt-muted)] hover:text-[var(--color-pri)] transition-colors shrink-0"
+          title="Moderation"
+          aria-label="Open moderation panel"
+        >
+          <Shield size={15} />
+        </button>
         <ChevronDown
           size={16}
           className="text-[var(--color-txt-muted)] shrink-0"
@@ -1031,6 +1044,14 @@ export function ChannelSidebar({
           onClose={() => setShowSettings(false)}
           displayName={displayName}
           currentAvatar={avatar}
+        />
+      )}
+
+      {/* Moderation panel (staff only — the panel itself gates by role) */}
+      {showModeration && (
+        <ModerationPanel
+          serverId={Store.currentServerId}
+          onClose={() => setShowModeration(false)}
         />
       )}
     </div>

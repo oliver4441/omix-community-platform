@@ -44,6 +44,18 @@ export function AppLayout() {
     return () => void unsub();
   }, []);
 
+  // Navigation events from deep links (notification center, search results).
+  useEffect(() => {
+    const toChat = () => setView("chat");
+    const toDms = () => setView("dms");
+    window.addEventListener("navigateChat", toChat);
+    window.addEventListener("navigateDMs", toDms);
+    return () => {
+      window.removeEventListener("navigateChat", toChat);
+      window.removeEventListener("navigateDMs", toDms);
+    };
+  }, []);
+
   const showDiscovery =
     !!user && serversLoaded && servers.length === 0 && !discoveryDismissed;
 

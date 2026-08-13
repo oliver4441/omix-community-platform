@@ -1,5 +1,25 @@
+/**
+ * Omix Store — backward-compatible facade over the domain services layer.
+ *
+ * Architecture (P0 refactor):
+ *   src/lib/services/events.ts          typed pub/sub bus
+ *   src/lib/services/subscriptions.ts   refcounted, visibility/offline-aware polls
+ *   src/lib/services/connection.ts      online/offline/reconnecting state
+ *   src/lib/services/permissions.ts     client RBAC mirror
+ *   src/lib/services/storage.ts         IndexedDB + localStorage
+ *   src/lib/services/outbox.ts          offline message queue + drafts
+ *   src/lib/services/media.ts           uploads with progress + validation
+ *   src/lib/services/notifications.ts   notification center client
+ *   src/lib/services/search.ts          global search client
+ *   src/lib/services/moderation.ts      reports / actions / audit client
+ *
+ * Every method signature that existed before this refactor is preserved, so
+ * existing components keep working unchanged. New capabilities (offline
+ * outbox, drafts, error states, search/moderation/notifications) are added on
+ * top.
+ */
 import { api, getUserId } from "@/lib/api";
-import { getRoom, getRoomId, isAblyConnected, onAblyConnectionState } from "@/lib/ably";
+import { getRoom, getRoomId, isAblyConnected, onAblyConnectionState, releaseRoom } from "@/lib/ably";
 import type { Message as AblyMessage, JsonObject } from "@ably/chat";
 import type {
   Message,
@@ -12,6 +32,21 @@ import type {
   UserStats,
   CallLogEntry,
 } from "@/lib/types";
+import { pollRef, flushPoll } from "@/lib/services/subscriptions";
+import {
+  isOnline,
+  onConnectionStatusChange,
+  initConnectionService,
+  getConnectionStatus,
+} from "@/lib/services/connection";
+import { subscribe as busSubscribe } from "@/lib/services/events";
+import * as outbox from "@/lib/services/outbox";
+import * as notifService from "@/lib/services/notifications";
+import * as searchService from "@/lib/services/search";
+import { moderationService } from "@/lib/services/moderation";
+import { validateUpload, uploadWithProgress, type UploadProgress } from "@/lib/services/media";
+import { idb, lsGet, lsSet } from "@/lib/services/storage";
+import { hasCapability, normalizeRole, type Capability, type ServerRole } from "@/lib/services/permissions";
 
 const FALLBACK_SESSION_ID = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 const TYPING_TIMEOUT = 3000;
@@ -19,13 +54,13 @@ const PAGE_SIZE = 50;
 const POLL_MS = 10000;
 
 function getSessionId(): string {
-  // The signed-in user id from the omix-api session token (replaces the old
-  // Supabase auth user id).
   if (typeof window !== "undefined") {
     try {
       const uid = getUserId();
       if (uid) return uid;
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }
   return FALLBACK_SESSION_ID;
 }
@@ -135,7 +170,10 @@ interface StoreState {
   currentDMChannelName: string;
   isAdmin: boolean;
   displayName: string;
+  /** Channel/server-scoped subscriptions — torn down by cleanup() on switches. */
   listeners: Listener[];
+  /** Global subscriptions (servers, DMs, stats…) — survive channel switches. */
+  globalListeners: Listener[];
   typingListeners: Listener[];
   presenceListeners: Listener[];
   pinListeners: Listener[];
@@ -148,11 +186,6 @@ interface StoreState {
   >;
 }
 
-function ls(): typeof localStorage {
-  if (typeof window !== "undefined") return localStorage;
-  return { getItem: () => null, setItem: () => {} } as unknown as typeof localStorage;
-}
-
 const state: StoreState = {
   servers: [],
   channels: [],
@@ -161,13 +194,14 @@ const state: StoreState = {
   pinnedMessages: [],
   typingUsers: [],
   onlineUsers: [],
-  currentServerId: ls().getItem("os_server") || "server1",
-  currentChannelId: ls().getItem("os_channel") || "channel1",
+  currentServerId: lsGet("os_server") || "server1",
+  currentChannelId: lsGet("os_channel") || "channel1",
   currentChannelType: "channel",
   currentDMChannelName: "",
-  isAdmin: ls().getItem("os_admin") === "true",
-  displayName: ls().getItem("os_username") || "",
+  isAdmin: lsGet("os_admin") === "true",
+  displayName: lsGet("os_username") || "",
   listeners: [],
+  globalListeners: [],
   typingListeners: [],
   presenceListeners: [],
   pinListeners: [],
@@ -178,11 +212,12 @@ const state: StoreState = {
 };
 
 try {
-  state.unreadCounts = JSON.parse(ls().getItem("os_unread") || "{}");
+  state.unreadCounts = JSON.parse(lsGet("os_unread") || "{}");
 } catch {
   state.unreadCounts = {};
 }
 
+// ── Legacy string-topic emitter (Store.on/off compatibility) ──
 const callbacks: Map<string, Set<(type: string, data: unknown) => void>> = new Map();
 
 function notify(type: string, data: unknown) {
@@ -195,21 +230,96 @@ function subscribe(type: string, cb: (type: string, data: unknown) => void) {
   return () => callbacks.get(type)?.delete(cb);
 }
 
-/** Run once immediately, then on an interval. Returns an unsubscribe fn. */
-function poll(fn: () => void, ms: number): () => void {
-  const run = () => {
-    try {
-      fn();
-    } catch {
-      /* ignore polling errors */
-    }
-  };
-  run();
-  const t = setInterval(run, ms);
-  return () => clearInterval(t);
+function cleanupError(err: unknown) {
+  // Keep polling loops silent; real errors surface through status notifications.
+  console.debug("[store] background fetch failed:", err);
 }
 
-// Upload through the omix-api worker (R2 storage).
+// ── Message subscriptions (refcounted per channel) ──
+interface MessageSub {
+  count: number;
+  cb: ((type: string, data: Message[]) => void) | null;
+  teardown: () => void;
+  fetch: () => Promise<void>;
+  status: "loading" | "ready" | "error";
+}
+
+const messageSubs = new Map<string, MessageSub>();
+
+const MESSAGE_CACHE_PREFIX = "messages:";
+
+async function cacheChannelMessages(channelId: string, messages: Message[]) {
+  await idb.put("cache", MESSAGE_CACHE_PREFIX + channelId, messages.slice(0, 100));
+}
+
+async function readCachedMessages(channelId: string): Promise<Message[]> {
+  const raw = await idb.get<unknown[]>("cache", MESSAGE_CACHE_PREFIX + channelId);
+  if (!Array.isArray(raw)) return [];
+  return raw.map((m) => toMessage(m as Message));
+}
+
+/** Merge queued offline outbox entries as pending messages at the tail. */
+async function mergePendingMessages(channelId: string, messages: Message[]): Promise<Message[]> {
+  const pending = await outbox.listForChannel(channelId);
+  if (pending.length === 0) return messages;
+  const pendingMessages: Message[] = pending.map((entry) => {
+    const payload = entry.payload;
+    return {
+      id: entry.nonce,
+      channelId,
+      author: (payload.author as string) || "You",
+      authorId: getSessionId(),
+      sessionId: getSessionId(),
+      text: (payload.text as string) || "",
+      color: (payload.color as string) || "#8B5CF6",
+      timestamp: new Date(entry.queuedAt),
+      reactions: {},
+      fileUrl: (payload.fileUrl as string) || undefined,
+      fileType: (payload.fileType as string) || undefined,
+      fileName: (payload.fileName as string) || undefined,
+      fileSize: (payload.fileSize as number) || undefined,
+      replyTo: payload.replyTo as Message["replyTo"],
+      threadId: (payload.threadId as string) || undefined,
+      mentions: (payload.mentions as string[]) || undefined,
+      pending: true,
+    } as Message & { pending?: boolean };
+  });
+  const seen = new Set(messages.map((m) => m.id));
+  return [...messages, ...pendingMessages.filter((m) => !seen.has(m.id))];
+}
+
+async function replayOutbox(): Promise<void> {
+  const entries = await outbox.list();
+  for (const entry of entries) {
+    try {
+      const { id } = await api.sendMessage(entry.channelId, entry.payload as Parameters<typeof api.sendMessage>[1]);
+      if (id) {
+        await outbox.remove(entry.nonce);
+        // Replace the pending bubble with the real message via Ably.
+        Store.publishMessage(entry.channelId, { ...entry.payload, id });
+        const sub = messageSubs.get(entry.channelId);
+        if (sub) {
+          await sub.fetch();
+        }
+      }
+    } catch (err) {
+      const code = (err as { code?: string; status?: number })?.code;
+      const status = (err as { status?: number })?.status;
+      // Permanent rejection (validation/auth) → drop; network issues → retry later.
+      if (status && status >= 400 && status < 500) {
+        await outbox.remove(entry.nonce);
+      } else if (!code || code === "api_not_configured" || status === 0 || status === undefined) {
+        await outbox.bumpAttempts(entry.nonce);
+      }
+    }
+  }
+}
+
+// Wire outbox replay to connectivity restoration (once).
+busSubscribe("connection:restored", () => {
+  void replayOutbox();
+});
+
 function uploadToStorage(file: File, kind: string): Promise<string> {
   return api.upload(file, kind);
 }
@@ -222,19 +332,32 @@ export const Store = {
   get typingUsers() { return state.typingUsers; },
   get onlineUsers() { return state.onlineUsers; },
   get currentServerId() { return state.currentServerId; },
-  set currentServerId(v: string) { state.currentServerId = v; ls().setItem("os_server", v); },
+  set currentServerId(v: string) { state.currentServerId = v; lsSet("os_server", v); },
   get currentChannelId() { return state.currentChannelId; },
-  set currentChannelId(v: string) { state.currentChannelId = v; ls().setItem("os_channel", v); },
+  set currentChannelId(v: string) { state.currentChannelId = v; lsSet("os_channel", v); },
   get currentChannelType() { return state.currentChannelType; },
   set currentChannelType(v: "channel" | "dm") { state.currentChannelType = v; },
   get currentDMChannelName() { return state.currentDMChannelName; },
   set currentDMChannelName(v: string) { state.currentDMChannelName = v; },
   get isAdmin() { return state.isAdmin; },
-  set isAdmin(v: boolean) { state.isAdmin = v; ls().setItem("os_admin", v ? "true" : ""); },
+  set isAdmin(v: boolean) { state.isAdmin = v; lsSet("os_admin", v ? "true" : ""); },
+  /** Sync the server-computed admin flag from useAuth. */
+  setAdmin(v: boolean) { state.isAdmin = v; lsSet("os_admin", v ? "true" : ""); },
   get displayName() { return state.displayName; },
-  set displayName(v: string) { state.displayName = v; ls().setItem("os_username", v); },
+  set displayName(v: string) { state.displayName = v; lsSet("os_username", v); },
   get unreadCounts() { return state.unreadCounts; },
   get sessionId() { return getSessionId(); },
+
+  /** Live connection status (online / offline / reconnecting). */
+  connectionStatus() {
+    initConnectionService();
+    return getConnectionStatus();
+  },
+  onConnectionChange(cb: (status: "online" | "offline" | "reconnecting") => void) {
+    initConnectionService();
+    return onConnectionStatusChange(cb);
+  },
+  get isOffline() { return !isOnline(); },
 
   // === DM CHANNELS ===
   get dmChannels() { return state.dmChannels; },
@@ -250,7 +373,7 @@ export const Store = {
             if (dm.id === state.currentChannelId) return;
             if (!dm.lastMessageAt) return;
             const lastMsgTime = toDate(dm.lastMessageAt).getTime();
-            const lastRead = parseInt(ls().getItem(`os_read_${dm.id}`) || "0", 10);
+            const lastRead = parseInt(lsGet(`os_read_${dm.id}`) || "0", 10);
             if (lastMsgTime > lastRead) {
               state.unreadCounts[dm.id] = Math.max(state.unreadCounts[dm.id] || 0, 1);
             }
@@ -259,10 +382,15 @@ export const Store = {
           notify("dmChannels", state.dmChannels);
           cb(state.dmChannels);
         })
-        .catch(() => {});
+        .catch(cleanupError);
     };
-    const unsub = poll(refresh, POLL_MS);
+    // Refcounted — DMSidebar and any future consumers share one poll. Lives in
+    // globalListeners: DM polling must survive channel switches (cleanup() is
+    // called on every channelChanged event — registering in listeners froze
+    // the DM list).
+    const unsub = pollRef("dms", refresh, POLL_MS);
     state.dmListeners.push(unsub);
+    state.globalListeners.push(unsub);
     return unsub;
   },
 
@@ -280,17 +408,14 @@ export const Store = {
 
   // === ADMIN ===
   async verifyAdminPassword(password: string): Promise<boolean> {
-    // Prefer the worker (config table); fall back to a local first-time check
-    // when the omix-api worker isn't reachable (e.g. dev without
-    // NEXT_PUBLIC_API_BASE_URL).
     try {
       const { valid } = await api.verifyAdminPassword(password);
       return valid;
     } catch {
       try {
-        const stored = ls().getItem("os_admin_password");
+        const stored = lsGet("os_admin_password");
         if (stored === null) {
-          ls().setItem("os_admin_password", password);
+          lsSet("os_admin_password", password);
           return true;
         }
         return stored === password;
@@ -310,10 +435,12 @@ export const Store = {
           notify("servers", state.servers);
           cb("servers", state.servers);
         })
-        .catch(() => {});
+        .catch(cleanupError);
     };
-    const unsub = poll(refresh, POLL_MS);
-    state.listeners.push(unsub);
+    // Global subscription — lives in globalListeners so channel switches
+    // (cleanup()) don't freeze the workspace list.
+    const unsub = pollRef("servers", refresh, POLL_MS);
+    state.globalListeners.push(unsub);
     return unsub;
   },
 
@@ -326,12 +453,13 @@ export const Store = {
       description: (opts.description || "").trim() || undefined,
       privacy: opts.privacy || "private",
     });
+    flushPoll("servers");
     return id;
   },
 
   async deleteServer(serverId: string): Promise<void> {
-    if (!state.isAdmin) throw new Error("Admin only");
     await api.deleteServer(serverId);
+    flushPoll("servers");
   },
 
   async updateServer(
@@ -344,10 +472,11 @@ export const Store = {
     }
   ): Promise<void> {
     await api.updateServer(serverId, data);
+    flushPoll("servers");
   },
 
   async uploadServerIcon(file: File, serverId: string): Promise<string> {
-    if (file.size > 2 * 1024 * 1024) throw new Error("Image too large (max 2MB)");
+    validateUpload(file, "icons");
     const fileUrl = await uploadToStorage(file, "icons");
     await this.updateServer(serverId, { icon: fileUrl });
     return fileUrl;
@@ -381,6 +510,7 @@ export const Store = {
   async joinServerByInvite(code: string): Promise<string | null> {
     try {
       const { serverId } = await api.joinServerByInvite(code);
+      flushPoll("servers");
       return serverId;
     } catch {
       return null;
@@ -401,9 +531,9 @@ export const Store = {
           notify("channels", state.channels);
           cb("channels", state.channels);
         })
-        .catch(() => {});
+        .catch(cleanupError);
     };
-    const unsub = poll(refresh, POLL_MS);
+    const unsub = pollRef(`channels:${serverId}`, refresh, POLL_MS);
     state.listeners.push(unsub);
     return unsub;
   },
@@ -416,19 +546,19 @@ export const Store = {
   ): Promise<string> {
     const { id } = await api.createChannel(serverId, { name, category, icon });
     state.currentChannelId = id;
-    ls().setItem("os_channel", id);
+    lsSet("os_channel", id);
+    flushPoll(`channels:${serverId}`);
     return id;
   },
 
   async uploadChannelIcon(file: File, channelId: string): Promise<string> {
-    if (file.size > 2 * 1024 * 1024) throw new Error("Image too large (max 2MB)");
+    validateUpload(file, "channel-icons");
     const fileUrl = await uploadToStorage(file, "channel-icons");
     await api.updateChannel(channelId, { icon: fileUrl });
     return fileUrl;
   },
 
   async deleteChannel(channelId: string): Promise<void> {
-    if (!state.isAdmin) throw new Error("Admin only");
     await api.deleteChannel(channelId);
   },
 
@@ -444,23 +574,72 @@ export const Store = {
       });
     }
 
-    const fetchLatest = () => {
-      api
-        .getMessages(channelId, { limit: PAGE_SIZE })
-        .then(({ messages }) => {
-          const docs = messages.map(toMessage).filter((m) => !m.pinned);
-          state.messages = docs;
-          const pagination = state.messagePagination.get(channelId);
-          if (pagination && docs.length > 0) {
-            pagination.oldestTimestamp = toDate(docs[0].timestamp).getTime();
-            pagination.hasMore = docs.length === PAGE_SIZE;
+    const makeUnsub = () => {
+      let active = true;
+      return () => {
+        if (!active) return;
+        active = false;
+        const sub = messageSubs.get(channelId);
+        if (sub) {
+          sub.count -= 1;
+          if (sub.count <= 0) {
+            sub.teardown();
+            messageSubs.delete(channelId);
           }
+        }
+      };
+    };
+
+    const existing = messageSubs.get(channelId);
+    if (existing) {
+      existing.count += 1;
+      existing.cb = cb;
+      const unsub = makeUnsub();
+      state.listeners.push(unsub);
+      return unsub;
+    }
+
+    const setStatus = (status: "loading" | "ready" | "error") => {
+      const sub = messageSubs.get(channelId);
+      if (sub) sub.status = status;
+      notify("messagesStatus", { channelId, status });
+    };
+
+    const fetchLatest = async () => {
+      try {
+        const { messages } = await api.getMessages(channelId, { limit: PAGE_SIZE });
+        const docs = messages.map(toMessage).filter((m) => !m.pinned);
+        const merged = await mergePendingMessages(channelId, docs);
+        state.messages = merged;
+        const pagination = state.messagePagination.get(channelId);
+        if (pagination && docs.length > 0) {
+          pagination.oldestTimestamp = toDate(docs[0].timestamp).getTime();
+          pagination.hasMore = docs.length === PAGE_SIZE;
+        }
+        setStatus("ready");
+        await cacheChannelMessages(channelId, docs);
+        notify("messages", state.messages);
+        cb("messages", state.messages);
+      } catch (err) {
+        setStatus("error");
+        cleanupError(err);
+      }
+    };
+
+    // Replay the offline cache first so the UI renders instantly.
+    setStatus("loading");
+    readCachedMessages(channelId)
+      .then(async (cached) => {
+        if (cached.length > 0 && state.messages.length === 0) {
+          state.messages = await mergePendingMessages(channelId, cached);
           notify("messages", state.messages);
           cb("messages", state.messages);
-        })
-        .catch(() => {});
-    };
-    fetchLatest();
+        }
+        await fetchLatest();
+      })
+      .catch(() => {
+        void fetchLatest();
+      });
 
     // Ably realtime for live messages.
     const roomId = getRoomId(channelId, state.dmChannelIds.has(channelId));
@@ -495,18 +674,42 @@ export const Store = {
       if (connected && pollTimer) {
         clearInterval(pollTimer);
         pollTimer = null;
+        void fetchLatest();
       } else if (!connected) {
         startFallback();
       }
     });
 
-    const unsub = () => {
-      unsubAbly();
-      offConn();
-      if (pollTimer) clearInterval(pollTimer);
+    const sub: MessageSub = {
+      count: 1,
+      cb,
+      status: "loading",
+      fetch: fetchLatest,
+      teardown: () => {
+        unsubAbly();
+        offConn();
+        if (pollTimer) clearInterval(pollTimer);
+        releaseRoom(roomId);
+      },
     };
+    messageSubs.set(channelId, sub);
+
+    const unsub = makeUnsub();
     state.listeners.push(unsub);
     return unsub;
+  },
+
+  getMessageStatus(channelId: string): "loading" | "ready" | "error" {
+    return messageSubs.get(channelId)?.status || "loading";
+  },
+
+  retryMessages(channelId: string): void {
+    const sub = messageSubs.get(channelId);
+    if (sub) {
+      sub.status = "loading";
+      notify("messagesStatus", { channelId, status: "loading" });
+      void sub.fetch();
+    }
   },
 
   async loadMoreMessages(channelId: string): Promise<Message[]> {
@@ -552,10 +755,10 @@ export const Store = {
         .then(({ messages }) => {
           cb("thread", messages.map(toMessage));
         })
-        .catch(() => {});
+        .catch(cleanupError);
     };
-    const unsub = poll(refresh, 5000);
-    state.listeners.push(unsub);
+    const unsub = pollRef(`thread:${threadId}`, refresh, 5000);
+    state.globalListeners.push(unsub);
     return unsub;
   },
 
@@ -583,8 +786,6 @@ export const Store = {
       text: text.trim(),
       color: getUserColor(displayName),
       author: displayName || "Anonymous",
-      authorId: getSessionId(),
-      sessionId: getSessionId(),
       timestamp: new Date().toISOString(),
       reactions: {},
     };
@@ -599,9 +800,30 @@ export const Store = {
     if (opts.mentions) msg.mentions = opts.mentions;
     if (opts.threadId) msg.threadId = opts.threadId;
 
-    const { id } = await api.sendMessage(channelId, msg);
-    if (id) {
-      this.publishMessage(channelId, { ...msg, id });
+    const nonce = outbox.createNonce();
+    const payload: Record<string, unknown> = { ...msg, nonce };
+
+    try {
+      const { id } = await api.sendMessage(channelId, { ...msg, nonce });
+      if (id) {
+        this.publishMessage(channelId, { ...payload, id });
+      }
+    } catch (err) {
+      // Network failure → queue for replay once connectivity returns.
+      const status = (err as { status?: number; code?: string })?.status;
+      const code = (err as { code?: string })?.code;
+      if (!status || status === 0 || status >= 500 || code === "api_not_configured") {
+        await outbox.enqueue(channelId, payload);
+        const sub = messageSubs.get(channelId);
+        if (sub?.cb) {
+          const merged = await mergePendingMessages(channelId, state.messages);
+          state.messages = merged;
+          notify("messages", state.messages);
+          sub.cb("messages", state.messages);
+        }
+        return; // keep the queued message visible; no throw (UX continuity)
+      }
+      throw err; // permanent rejection (403/429/4xx validation) — surface it
     }
 
     if (channelId !== state.currentChannelId) {
@@ -619,7 +841,7 @@ export const Store = {
       channelId,
       author: row.author,
       authorId: row.author_id || row.authorId,
-      sessionId: row.session_id || row.sessionId,
+      sessionId: row.session_id || row.sessionId || getSessionId(),
       color: row.color,
       timestamp: row.timestamp,
       fileUrl: row.file_url || row.fileUrl,
@@ -652,7 +874,6 @@ export const Store = {
 
   // === PINS ===
   async togglePin(messageId: string): Promise<void> {
-    if (!state.isAdmin) throw new Error("Admin only");
     await api.togglePin(messageId);
   },
 
@@ -666,9 +887,9 @@ export const Store = {
           notify("pins", pins);
           cb(pins);
         })
-        .catch(() => {});
+        .catch(cleanupError);
     };
-    const unsub = poll(refresh, POLL_MS);
+    const unsub = pollRef(`pins:${channelId}`, refresh, POLL_MS);
     state.pinListeners.push(unsub);
     return unsub;
   },
@@ -777,7 +998,9 @@ export const Store = {
                 try {
                   const profile = await this.getProfile(m.clientId);
                   if (profile?.name) name = profile.name;
-                } catch {}
+                } catch {
+                  /* ignore */
+                }
                 return { name, sessionId: m.clientId, channelId } as TypingUser;
               })
             ).then((users) => {
@@ -816,12 +1039,17 @@ export const Store = {
   },
 
   // === PRESENCE ===
+  presenceInterval: null as ReturnType<typeof setInterval> | null,
+
   async setPresence(displayName: string): Promise<void> {
     const color = getUserColor(displayName);
     const beat = () => api.setPresence(displayName, color).catch(() => {});
 
     await beat();
-    setInterval(beat, 30000);
+    // Track the interval so cleanup() can stop it (previous code leaked this).
+    if (!this.presenceInterval) {
+      this.presenceInterval = setInterval(beat, 30000);
+    }
 
     const enterAbly = () => {
       getRoom("presence-main")
@@ -884,7 +1112,9 @@ export const Store = {
           }) as User[];
         state.onlineUsers = users;
         cb(users);
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     };
 
     const setupAbly = () => {
@@ -956,9 +1186,14 @@ export const Store = {
   },
 
   // === FILE UPLOAD ===
-  async uploadFile(file: File, channelId: string, displayName: string): Promise<void> {
-    if (file.size > 20 * 1024 * 1024) throw new Error("File too large (max 20MB)");
-    const fileUrl = await uploadToStorage(file, "uploads");
+  async uploadFile(
+    file: File,
+    channelId: string,
+    displayName: string,
+    onProgress?: (progress: UploadProgress) => void
+  ): Promise<void> {
+    validateUpload(file, "uploads");
+    const fileUrl = await uploadWithProgress(file, "uploads", onProgress);
     await this.sendMessage(channelId, "", displayName, {
       fileUrl,
       fileType: file.type,
@@ -972,8 +1207,10 @@ export const Store = {
     state.unreadCounts[channelId] = 0;
     this.saveUnread();
     try {
-      ls().setItem(`os_read_${channelId}`, Date.now().toString());
-    } catch {}
+      lsSet(`os_read_${channelId}`, Date.now().toString());
+    } catch {
+      /* ignore */
+    }
   },
 
   incrementUnread(channelId: string) {
@@ -984,8 +1221,10 @@ export const Store = {
 
   saveUnread() {
     try {
-      ls().setItem("os_unread", JSON.stringify(state.unreadCounts));
-    } catch {}
+      lsSet("os_unread", JSON.stringify(state.unreadCounts));
+    } catch {
+      /* ignore */
+    }
   },
 
   // === XP & BADGES ===
@@ -1036,8 +1275,8 @@ export const Store = {
         .then((stats) => cb(stats))
         .catch(() => {});
     };
-    const unsub = poll(refresh, POLL_MS);
-    state.listeners.push(unsub);
+    const unsub = pollRef(`stats:${uid}`, refresh, POLL_MS);
+    state.globalListeners.push(unsub);
     return unsub;
   },
 
@@ -1066,8 +1305,6 @@ export const Store = {
     body: string,
     data?: Record<string, string>
   ): Promise<void> {
-    // Route through the omix-api worker, which queues into the notifications
-    // table. No-op if the worker isn't deployed.
     await api.queuePushNotification(userId, title, body, data);
   },
 
@@ -1091,22 +1328,43 @@ export const Store = {
         .then((entries) => cb(entries))
         .catch(() => {});
     };
-    const unsub = poll(refresh, POLL_MS);
-    state.listeners.push(unsub);
+    const unsub = pollRef("call-log", refresh, POLL_MS);
+    state.globalListeners.push(unsub);
     return unsub;
   },
 
   // === CLEANUP ===
+  /** Channel-scoped teardown — safe to call on every channel switch. */
+  cleanupChannel() {
+    for (const [channelId, sub] of messageSubs) {
+      sub.teardown();
+      messageSubs.delete(channelId);
+    }
+    this.cleanupTyping();
+    this.cleanupPins();
+    this.cleanupPresence();
+  },
+
+  /** Full teardown of server/channel-scoped subscriptions (server switches). */
   cleanup() {
     state.listeners.forEach((u) => u());
     state.listeners = [];
-    this.cleanupTyping();
+    this.cleanupChannel();
     this.cleanupPresence();
-    this.cleanupPins();
+    if (this.presenceInterval) {
+      clearInterval(this.presenceInterval);
+      this.presenceInterval = null;
+    }
+  },
+
+  /** Tear down global subscriptions (logout / account switch). */
+  cleanupGlobal() {
+    state.globalListeners.forEach((u) => u());
+    state.globalListeners = [];
     this.cleanupDMChannels();
   },
 
-  // === EVENTS ===
+  // === LEGACY EVENTS ===
   on(type: string, cb: (type: string, data: unknown) => void) {
     return subscribe(type, cb);
   },
@@ -1142,12 +1400,14 @@ export const Store = {
         this.profileCache[sessionId] = profile;
         return profile;
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return null;
   },
 
   async uploadAvatar(file: File): Promise<string> {
-    if (file.size > 2 * 1024 * 1024) throw new Error("Image too large (max 2MB)");
+    validateUpload(file, "avatars");
     const fileUrl = await uploadToStorage(file, "avatars");
     await this.saveProfile({ avatar: fileUrl });
     return fileUrl;
@@ -1173,10 +1433,42 @@ export const Store = {
         })
         .catch(() => {});
     };
-    const unsub = poll(refresh, POLL_MS);
-    state.listeners.push(unsub);
+    const unsub = pollRef(`profile:${sessionId}`, refresh, POLL_MS);
+    state.globalListeners.push(unsub);
     return unsub;
   },
+
+  // === OFFLINE: DRAFTS ===
+  async saveDraft(channelId: string, text: string, replyTo?: unknown): Promise<void> {
+    await outbox.saveDraft(channelId, text, replyTo);
+  },
+
+  async getDraft(channelId: string): Promise<{ text: string; replyTo?: unknown } | null> {
+    const draft = await outbox.getDraft(channelId);
+    if (!draft || !draft.text) return null;
+    return { text: draft.text, replyTo: draft.replyTo };
+  },
+
+  async clearDraft(channelId: string): Promise<void> {
+    await outbox.clearDraft(channelId);
+  },
+
+  async getPendingOutboxCount(): Promise<number> {
+    return outbox.count();
+  },
+
+  onOutboxChange(cb: (count: number) => void) {
+    return outbox.onOutboxChange(cb);
+  },
+
+  // === NEW SERVICES (P0) ===
+  get permissions() {
+    return { hasCapability, normalizeRole };
+  },
+  notifications: notifService,
+  search: searchService,
+  moderation: moderationService,
 };
 
 export { getSessionId, getUserColor };
+export type { Capability, ServerRole };

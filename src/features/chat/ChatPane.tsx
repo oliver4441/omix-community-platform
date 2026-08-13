@@ -8,6 +8,7 @@ import { RightSidebar } from './RightSidebar';
 import { Store } from '@/lib/store';
 import { useToast } from '@/components/ui/Toast';
 import { initiateCall, setActiveChannel } from '@/lib/calls';
+import { NotificationCenter } from '@/features/notifications/NotificationCenter';
 import type { Message, User, TypingUser } from '@/lib/types';
 import {
   Hash,
@@ -19,6 +20,10 @@ import {
   Edit3,
   Phone,
   Video,
+  Menu,
+  WifiOff,
+  AlertCircle,
+  RefreshCw,
 } from '@/components/ui/icons';
 
 const ThreadPanel = lazy(() =>
@@ -26,6 +31,11 @@ const ThreadPanel = lazy(() =>
 );
 const SearchModal = lazy(() =>
   import('@/components/ui/SearchModal').then((m) => ({ default: m.SearchModal }))
+);
+const MobileChannelDrawer = lazy(() =>
+  import('@/features/navigation/MobileChannelDrawer').then((m) => ({
+    default: m.MobileChannelDrawer,
+  }))
 );
 
 const MENTION_RE = /@(\w*)$/;
@@ -113,6 +123,10 @@ export function ChatPane({
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [threadMessage, setThreadMessage] = useState<Message | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [connStatus, setConnStatus] = useState<'online' | 'offline' | 'reconnecting'>('online');
+  const [msgStatus, setMsgStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [uploadProgress, setUploadProgress] = useState<{ fileName: string; percent: number } | null>(null);
   const { toast } = useToast();
   const prevMsgCount = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -143,13 +157,6 @@ export function ChatPane({
 
     const unsubMsg = Store.subscribeMessages(channelId, (_, data) => {
       const msgs = data as Message[];
-      // Play notification sound for new messages (not own)
-      if (msgs.length > prevMsgCount.current && msgs.length > 0) {
-        const latest = msgs[msgs.length - 1];
-        if (latest.sessionId !== Store.sessionId) {
-          // playMessageSound() — optional, not imported for now
-        }
-      }
       prevMsgCount.current = msgs.length;
       setMessages(msgs);
       setMessagesLoaded(true);
@@ -158,13 +165,19 @@ export function ChatPane({
     const unsubTyping = Store.subscribeTyping(channelId, setTypingUsers);
     const unsubPins = Store.subscribePins(channelId, setPins);
     const unsubPresence = Store.subscribePresence(setOnlineUsers);
+    const offConn = Store.onConnectionChange(setConnStatus);
+    const offStatus = Store.on('messagesStatus', (_, data) => {
+      const { channelId: chId, status } = data as { channelId: string; status: 'loading' | 'ready' | 'error' };
+      if (chId === channelId) setMsgStatus(status);
+    });
 
     Store.markChannelRead(channelId);
 
     const handler = (e: CustomEvent) => {
-      Store.cleanup();
+      Store.cleanupChannel();
       Store.markChannelRead(e.detail);
       setActiveChannel(e.detail);
+      setMsgStatus(Store.getMessageStatus(e.detail));
       Store.subscribeMessages(e.detail, (_, data) => {
         const msgs = data as Message[];
         setMessages(msgs);
@@ -173,6 +186,7 @@ export function ChatPane({
       });
       Store.subscribeTyping(e.detail, setTypingUsers);
       Store.subscribePins(e.detail, setPins);
+      Store.subscribePresence(setOnlineUsers);
       const ch = Store.channels.find((c) => c.id === e.detail);
       if (ch) setChannelName(ch.name);
       setIsDM(Store.currentChannelType === 'dm');
@@ -187,6 +201,8 @@ export function ChatPane({
       unsubTyping();
       unsubPins();
       unsubPresence();
+      offConn();
+      offStatus();
       window.removeEventListener('channelChanged', handler as EventListener);
     };
   }, [loadAuthorProfiles]);
@@ -195,6 +211,42 @@ export function ChatPane({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
+
+  // ── Drafts: restore on channel switch, persist (debounced) while typing ──
+  // The channel id is read during render; ChatPane always re-renders on channel
+  // changes (the channelChanged handler sets state), so these effects re-run.
+  const draftChannelId = Store.currentChannelId;
+
+  useEffect(() => {
+    if (!draftChannelId) return;
+    let cancelled = false;
+    Store.getDraft(draftChannelId)
+      .then((draft) => {
+        if (!cancelled && draft) {
+          setInput(draft.text);
+          if (draft.replyTo) setReplyTo(draft.replyTo as Message["replyTo"]);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftChannelId, isDM]);
+
+  useEffect(() => {
+    if (!draftChannelId) return;
+    const timer = setTimeout(() => {
+      // Guard against a channel switch that happened while debouncing.
+      if (Store.currentChannelId !== draftChannelId) return;
+      if (input.trim()) {
+        void Store.saveDraft(draftChannelId, input, replyTo || undefined);
+      } else {
+        void Store.clearDraft(draftChannelId);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [input, replyTo, draftChannelId]);
 
   const sendMsg = useCallback(
     (e: React.FormEvent) => {
@@ -207,12 +259,24 @@ export function ChatPane({
           author: replyTo.author,
           text: replyTo.text.substring(0, 80),
         };
-      Store.stopTyping(Store.currentChannelId);
-      Store.sendMessage(Store.currentChannelId, input, displayName || 'Anonymous', opts);
+      const channelId = Store.currentChannelId;
+      Store.stopTyping(channelId);
+      Store.sendMessage(channelId, input, displayName || 'Anonymous', opts)
+        .catch((err) => {
+          const code = (err as { code?: string })?.code;
+          if (code === "flood_protected") {
+            toast("You're sending messages too quickly — slow down", "error");
+          } else if (code === "muted") {
+            toast("You're muted in this channel", "error");
+          } else {
+            toast("Message couldn't be sent", "error");
+          }
+        });
       setInput('');
       setReplyTo(null);
+      void Store.clearDraft(channelId);
     },
-    [input, replyTo, displayName]
+    [input, replyTo, displayName, toast]
   );
 
   const startCall = useCallback(
@@ -323,9 +387,15 @@ export function ChatPane({
         e.target.value = '';
         return;
       }
-      Store.uploadFile(file, Store.currentChannelId, displayName || 'Anonymous').catch(
-        (_err) => setShowDeleteConfirm('upload-failed')
-      );
+      setUploadProgress({ fileName: file.name, percent: 0 });
+      Store.uploadFile(file, Store.currentChannelId, displayName || 'Anonymous', (p) =>
+        setUploadProgress({ fileName: file.name, percent: p.percent })
+      )
+        .then(() => setUploadProgress(null))
+        .catch(() => {
+          setUploadProgress(null);
+          setShowDeleteConfirm('upload-failed');
+        });
       e.target.value = '';
     },
     [displayName]
@@ -373,6 +443,15 @@ export function ChatPane({
       <div className="flex-1 flex flex-col min-w-0">
         {/* Chat header */}
         <div className="h-12 border-b border-[var(--color-border)] flex items-center px-4 shadow-sm shrink-0 bg-[var(--color-bg-dark)]">
+          {isMobile && (
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="p-1.5 -ml-1.5 mr-1 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors"
+              aria-label="Open channels and communities"
+            >
+              <Menu size={18} className="text-[var(--color-txt-muted)]" />
+            </button>
+          )}
           {isDM ? (
             <MessageSquare
               size={18}
@@ -429,7 +508,22 @@ export function ChatPane({
               className="text-[var(--color-txt-muted)] hover:text-[var(--color-txt)] transition-colors"
             />
           </button>
+          <NotificationCenter />
         </div>
+
+        {/* Offline / reconnecting banner */}
+        {connStatus !== "online" && (
+          <div
+            className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-1.5 text-xs text-amber-400 flex items-center gap-2 shrink-0"
+            role="status"
+            aria-live="polite"
+          >
+            <WifiOff size={13} className="shrink-0" />
+            {connStatus === "offline"
+              ? "You're offline — messages are queued and will send when you reconnect."
+              : "Reconnecting… messages are queued locally."}
+          </div>
+        )}
 
         {/* Pinned banner */}
         {pins.length > 0 && (
@@ -461,7 +555,7 @@ export function ChatPane({
           aria-live="polite"
           aria-relevant="additions"
         >
-          {!messagesLoaded ? (
+          {!messagesLoaded && msgStatus !== "error" ? (
             <div className="flex-1 px-2 py-4 space-y-3" aria-label="Loading messages">
               {[1, 2, 3, 4, 5].map((i) => (
                 <div key={i} className="flex items-start gap-3">
@@ -473,6 +567,27 @@ export function ChatPane({
                   </div>
                 </div>
               ))}
+            </div>
+          ) : msgStatus === "error" && messages.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-10" role="alert">
+              <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                <AlertCircle size={24} className="text-red-400" />
+              </div>
+              <h3 className="text-base font-bold text-[var(--color-txt)] mb-1">
+                Unable to load messages
+              </h3>
+              <p className="text-sm text-[var(--color-txt-muted)] max-w-xs mb-4">
+                Check your connection and try again. Nothing is lost — your
+                recent conversations are cached on this device.
+              </p>
+              <button
+                onClick={() => Store.retryMessages(Store.currentChannelId)}
+                className="btn-primary flex items-center gap-2"
+                aria-label="Retry loading messages"
+              >
+                <RefreshCw size={14} />
+                Retry
+              </button>
             </div>
           ) : messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-10">
@@ -573,6 +688,24 @@ export function ChatPane({
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Upload progress */}
+        {uploadProgress && (
+          <div className="px-4 py-2 bg-[var(--color-bg-dark)] border-t border-[var(--color-border)] shrink-0">
+            <div className="flex items-center justify-between text-xs text-[var(--color-txt-muted)] mb-1">
+              <span className="truncate mr-3">
+                Uploading {uploadProgress.fileName}
+              </span>
+              <span className="shrink-0">{uploadProgress.percent}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-[var(--color-bg-mid)] overflow-hidden">
+              <div
+                className="h-full bg-[var(--color-pri)] transition-all duration-150"
+                style={{ width: `${uploadProgress.percent}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         <MessageInput
           channelName={channelName}
           input={input}
@@ -592,6 +725,12 @@ export function ChatPane({
         {showSearch && (
           <Suspense fallback={null}>
             <SearchModal onClose={() => setShowSearch(false)} />
+          </Suspense>
+        )}
+
+        {isMobile && drawerOpen && (
+          <Suspense fallback={null}>
+            <MobileChannelDrawer onClose={() => setDrawerOpen(false)} />
           </Suspense>
         )}
 

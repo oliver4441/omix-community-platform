@@ -1,8 +1,10 @@
 /**
  * omix-api — Omix Community backend on Cloudflare Workers.
  *
- * Replaces Supabase entirely: D1 (database), R2 (file storage), and a custom
- * auth layer (email/password + GitHub OAuth) all live in this worker.
+ * D1 (database), KV (file storage), and a custom auth layer (email/password +
+ * GitHub OAuth). RBAC, moderation, rate limits, search and the notification
+ * center are layered in dedicated modules (permissions.ts, moderation.ts,
+ * ratelimit.ts, search.ts, notifications.ts, events.ts).
  *
  * Routes:
  *   GET  /health                          health check
@@ -12,7 +14,9 @@
  *   GET  /auth/me            POST /auth/logout
  *   ...   /servers, /channels, /messages, /dm-channels, /presence, /typing,
  *         /profiles, /stats, /call-log, /board-posts, /notification-settings,
- *         /invites, /config, /admin, /upload, /assets/*  (see crud.ts)
+ *         /invites, /config, /admin, /upload, /assets/*        (see crud.ts)
+ *   GET  /search, /notifications*, /moderation/queue,
+ *        /servers/:id/{members,reports,audit-log,moderation/:uid,events}  (new)
  */
 import Ably from "ably";
 import type { Env } from "./env";
@@ -20,8 +24,13 @@ import { json, corsHeaders, now, getBearer, requireUser, getSessionUser } from "
 import { handleAuth } from "./auth";
 import { handleCrud, serveAsset } from "./crud";
 import { handleGithub } from "./github";
+import { handleSearch } from "./search";
+import { handleModeration } from "./moderation";
+import { handleNotifications } from "./notifications";
+import { handleEvents } from "./events";
+import { userRateLimit } from "./ratelimit";
 
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
 
 async function createAblyToken(env: Env, clientId: string) {
   const rest = new Ably.Rest(env.ABLY_API_KEY);
@@ -92,8 +101,30 @@ export default {
       // ── Everything else requires a session ──
       const auth = await requireUser(env, request);
       if ("response" in auth) return auth.response;
+
+      // Global per-user rate limit (fail-open if the limiter errors).
+      const rl = await userRateLimit(env, auth.user.id);
+      if (!rl.ok) {
+        return json(
+          { error: "rate_limited", retryAfter: rl.retryAfterSeconds },
+          429,
+          env
+        );
+      }
+
       const gh = await handleGithub(path, request, env, auth.user);
       if (gh) return gh;
+
+      // Feature modules first (they own their path prefixes).
+      const searched = await handleSearch(env, request, auth.user);
+      if (searched) return searched;
+      const moderated = await handleModeration(env, request, auth.user);
+      if (moderated) return moderated;
+      const notified = await handleNotifications(env, request, auth.user);
+      if (notified) return notified;
+      const evented = await handleEvents(env, request, auth.user);
+      if (evented) return evented;
+
       const handled = await handleCrud(request, env, auth.user);
       if (handled) return handled;
 

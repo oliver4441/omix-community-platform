@@ -275,6 +275,8 @@ export const api = {
       sessionId?: string;
       timestamp?: string;
       reactions?: Record<string, string[]>;
+      /** Idempotency token — replays from the offline outbox are deduped by it. */
+      nonce?: string;
     }
   ) {
     return request<{ id: string }>(`/channels/${channelId}/messages`, {
@@ -470,6 +472,181 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ userId, title, body, data }),
     });
+  },
+
+  // ── notification center ──
+  notifications: {
+    list(limit = 50) {
+      return request<
+        {
+          id: string;
+          type: string;
+          title: string;
+          body: string;
+          data: Record<string, unknown>;
+          read: boolean;
+          createdAt: string;
+        }[]
+      >(`/notifications?limit=${limit}`);
+    },
+    unreadCount() {
+      return request<{ count: number }>("/notifications/unread-count");
+    },
+    markRead(id: string) {
+      return request<{ ok: boolean }>(`/notifications/${id}/read`, { method: "POST" });
+    },
+    markAllRead() {
+      return request<{ ok: boolean }>("/notifications/read-all", { method: "POST" });
+    },
+    listOverrides() {
+      return request<
+        { id: string; scope: "channel" | "thread"; targetId: string; level: string }[]
+      >("/notification-overrides");
+    },
+    putOverride(body: { scope: "channel" | "thread"; targetId: string; level: string }) {
+      return request<{ ok: boolean }>("/notification-overrides", {
+        method: "PUT",
+        body: JSON.stringify(body),
+      });
+    },
+    deleteOverride(id: string) {
+      return request<{ ok: boolean }>(`/notification-overrides/${id}`, { method: "DELETE" });
+    },
+  },
+
+  // ── search ──
+  search(q: string, filters: { from?: string; in?: string; before?: string; after?: string; has?: string[] }, limit = 30) {
+    // Filter grammar is passed through the q param (from:… in:… before:… after:… has:…).
+    const tokens: string[] = [];
+    if (q.trim()) tokens.push(q.trim());
+    if (filters.from) tokens.push(`from:${filters.from}`);
+    if (filters.in) tokens.push(`in:${filters.in}`);
+    if (filters.before) tokens.push(`before:${filters.before}`);
+    if (filters.after) tokens.push(`after:${filters.after}`);
+    for (const h of filters.has || []) tokens.push(`has:${h}`);
+    const params = new URLSearchParams();
+    params.set("q", tokens.join(" "));
+    params.set("limit", String(limit));
+    return request<{
+      results: {
+        id: string;
+        kind: string;
+        title: string;
+        snippet?: string;
+        by?: string;
+        context?: { serverId?: string; channelId?: string; messageId?: string };
+        timestamp?: string;
+      }[];
+      at: string;
+    }>(`/search?${params.toString()}`);
+  },
+
+  // ── moderation ──
+  moderation: {
+    report(serverId: string, targetType: string, targetId: string, reason: string) {
+      return request<{ ok: boolean }>(`/servers/${serverId}/reports`, {
+        method: "POST",
+        body: JSON.stringify({ targetType, targetId, reason }),
+      });
+    },
+    queue() {
+      return request<{
+        reports: {
+          id: string;
+          serverId: string;
+          reporterId: string;
+          targetType: string;
+          targetId: string;
+          reason: string;
+          status: string;
+          createdAt: string;
+        }[];
+        recentActions: {
+          id: string;
+          serverId: string;
+          actorId: string;
+          targetUserId: string;
+          action: string;
+          reason: string;
+          expiresAt: string | null;
+          createdAt: string;
+        }[];
+      }>("/moderation/queue");
+    },
+    act(serverId: string, targetUserId: string, action: string, reason?: string, durationMinutes?: number) {
+      return request<{ ok: boolean }>(`/servers/${serverId}/moderation/${targetUserId}`, {
+        method: "POST",
+        body: JSON.stringify({ action, reason, durationMinutes }),
+      });
+    },
+    resolveReport(reportId: string, status: "resolved" | "dismissed") {
+      return request<{ ok: boolean }>(`/reports/${reportId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+    },
+    members(serverId: string) {
+      return request<
+        { userId: string; name: string; avatar: string; role: string; joinedAt: string; mutedUntil: string | null }[]
+      >(`/servers/${serverId}/members`);
+    },
+    auditLog(serverId: string, limit = 100) {
+      return request<
+        {
+          id: string;
+          actorId: string;
+          actorName: string;
+          action: string;
+          targetType: string;
+          targetId: string;
+          reason: string;
+          metadata: Record<string, unknown>;
+          createdAt: string;
+        }[]
+      >(`/servers/${serverId}/audit-log?limit=${limit}`);
+    },
+  },
+
+  // ── events ──
+  events: {
+    list(serverId: string, upcoming = false) {
+      return request<
+        {
+          id: string;
+          serverId: string;
+          title: string;
+          description: string;
+          startsAt: string;
+          endsAt: string | null;
+          timezone: string;
+          location: string;
+          hostId: string;
+          createdAt: string;
+        }[]
+      >(`/servers/${serverId}/events${upcoming ? "?upcoming=1" : ""}`);
+    },
+    create(
+      serverId: string,
+      data: {
+        title: string;
+        description?: string;
+        startsAt: string;
+        endsAt?: string;
+        timezone?: string;
+        location?: string;
+      }
+    ) {
+      return request<{ id: string }>(`/servers/${serverId}/events`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    rsvp(eventId: string, status: "going" | "maybe" | "declined") {
+      return request<{ ok: boolean }>(`/events/${eventId}/rsvp`, {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+      });
+    },
   },
 
   // ── uploads (R2) ──

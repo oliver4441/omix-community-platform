@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { api, getToken, setToken, setUserId, type AuthUser as ApiAuthUser } from "@/lib/api";
+import { Store } from "@/lib/store";
 
 export interface AuthUser {
   uid: string;
@@ -53,9 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshAdmin = useCallback(async (uid: string, email: string | null) => {
     try {
       const cfg = await api.getConfigSettings();
-      setIsAdmin(uid === cfg.adminUid || email === cfg.adminEmail);
+      const admin = uid === cfg.adminUid || email === cfg.adminEmail;
+      setIsAdmin(admin);
+      // Keep the legacy Store flag in sync (many components read Store.isAdmin).
+      Store.setAdmin(admin);
     } catch {
       setIsAdmin(false);
+      Store.setAdmin(false);
     }
   }, []);
 
@@ -139,6 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserId(null);
     setUser(null);
     setIsAdmin(false);
+    Store.setAdmin(false);
+    Store.cleanup();
+    Store.cleanupGlobal();
   }, []);
 
   return (

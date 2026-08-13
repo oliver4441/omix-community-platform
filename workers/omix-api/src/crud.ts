@@ -13,6 +13,30 @@ import {
   type SessionUser,
 } from "./util";
 import { refreshFeed } from "../../feed/ingest";
+import {
+  hasCapability,
+  normalizeRole,
+  type Capability,
+} from "./permissions";
+import {
+  getMembership,
+  requireMembership,
+  memberCapabilities,
+  can,
+  isMuted,
+  logAudit,
+} from "./moderation";
+import { messageRateLimit } from "./ratelimit";
+import {
+  createNotification,
+  resolveUsersByName,
+  getChannelNotificationLevel,
+} from "./notifications";
+
+const MAX_TEXT_LEN = 4000;
+const MAX_MENTIONS = 50;
+const MAX_TITLE_LEN = 200;
+const MAX_BODY_LEN = 20_000;
 
 // ═══════════ mappers ═══════════
 
@@ -65,6 +89,7 @@ function mapMessage(r: Record<string, unknown>) {
     replyTo: parseJson<unknown>(r.reply_to as string, undefined),
     threadId: (r.thread_id as string) || undefined,
     mentions: parseJson<unknown>(r.mentions as string, undefined),
+    deleted: Boolean(r.deleted),
   };
 }
 
@@ -164,6 +189,52 @@ async function isDMChannel(env: Env, channelId: string): Promise<boolean> {
   return Boolean(row);
 }
 
+/** Resolve the display name server-side (profiles → users) so it can't be spoofed. */
+async function displayNameFor(env: Env, user: SessionUser): Promise<string> {
+  try {
+    const row = await env.DB.prepare("SELECT name FROM profiles WHERE session_id = ?")
+      .bind(user.id)
+      .first<{ name: string }>();
+    if (row?.name) return row.name;
+  } catch {
+    /* ignore */
+  }
+  return user.fullName || "Anonymous";
+}
+
+/**
+ * Membership for the server that owns a channel, plus channel overrides.
+ * Returns { member, role, overrides, isDm, dmParticipants } — caller decides
+ * which combinations are allowed.
+ */
+async function channelContext(env: Env, channelId: string, userId: string) {
+  const dmRow = await env.DB.prepare("SELECT * FROM dm_channels WHERE id = ?")
+    .bind(channelId)
+    .first<Record<string, unknown>>();
+  if (dmRow) {
+    const participants = parseJson<string[]>(dmRow.participants as string, []);
+    return {
+      isDm: true,
+      dmParticipants: participants,
+      isParticipant: participants.includes(userId),
+      member: null,
+      role: null,
+      overrides: [],
+      serverId: null,
+    };
+  }
+  const channel = await env.DB.prepare("SELECT server_id FROM channels WHERE id = ?")
+    .bind(channelId)
+    .first<{ server_id: string }>();
+  if (!channel) return { isDm: false, dmParticipants: [], isParticipant: false, member: null, role: null, overrides: [], serverId: null };
+  const member = await getMembership(env, channel.server_id, userId);
+  if (!member) {
+    return { isDm: false, dmParticipants: [], isParticipant: false, member: null, role: null, overrides: [], serverId: channel.server_id };
+  }
+  const { role, overrides } = await memberCapabilities(env, member, channelId);
+  return { isDm: false, dmParticipants: [], isParticipant: true, member, role, overrides, serverId: channel.server_id };
+}
+
 async function getMessages(
   env: Env,
   channelId: string,
@@ -176,7 +247,7 @@ async function getMessages(
   const table = dm ? "dm_messages" : "messages";
   const col = dm ? "dm_channel_id" : "channel_id";
 
-  let sql = `SELECT * FROM ${table} WHERE ${col} = ?`;
+  let sql = `SELECT * FROM ${table} WHERE ${col} = ? AND deleted = 0`;
   const binds: unknown[] = [channelId];
   if (threadId) {
     sql += " AND thread_id = ?";
@@ -197,61 +268,179 @@ async function getMessages(
   return (results || []).map(mapMessage);
 }
 
+interface InsertMessageResult {
+  id: string;
+  error?: string;
+}
+
 async function insertMessage(
   env: Env,
   channelId: string,
   body: Record<string, unknown>,
   user: SessionUser
-) {
-  const dm = await isDMChannel(env, channelId);
-  const table = dm ? "dm_messages" : "messages";
-  const col = dm ? "dm_channel_id" : "channel_id";
+): Promise<InsertMessageResult> {
+  const ctx = await channelContext(env, channelId, user.id);
+
+  // ── Authorization ──
+  if (ctx.isDm) {
+    if (!ctx.isParticipant) return { id: "", error: "not_a_participant" };
+  } else {
+    if (!ctx.member) return { id: "", error: "not_a_member" };
+    if (ctx.member.banned) return { id: "", error: "banned" };
+    if (isMuted(ctx.member)) return { id: "", error: "muted" };
+    const { role, overrides } = ctx;
+    if (role && !hasCapability(role, "SEND_MESSAGES", overrides))
+      return { id: "", error: "forbidden" };
+  }
+
+  // ── Flood protection ──
+  const rl = await messageRateLimit(env, user.id);
+  if (!rl.ok) return { id: "", error: "flood_protected" };
+
+  // ── Input validation ──
+  const text = String(body.text || "").trim().slice(0, MAX_TEXT_LEN);
+  const hasFile = Boolean(body.fileUrl);
+  if (!text && !hasFile) return { id: "", error: "empty_message" };
+  if (body.fileUrl && typeof body.fileUrl !== "string")
+    return { id: "", error: "invalid_file" };
+
+  let mentions: string[] = Array.isArray(body.mentions)
+    ? body.mentions.filter((m): m is string => typeof m === "string" && m.length > 0).slice(0, MAX_MENTIONS)
+    : [];
+  // @everyone / @here requires the MENTION_EVERYONE capability.
+  const massMention = mentions.some((m) => m === "@everyone" || m === "@here");
+  if (massMention) {
+    if (!ctx.isDm && ctx.role && !hasCapability(ctx.role, "MENTION_EVERYONE", ctx.overrides)) {
+      mentions = mentions.filter((m) => m !== "@everyone" && m !== "@here");
+    }
+  }
+  if (!massMention && mentions.length > 10) {
+    mentions = mentions.slice(0, 10);
+  }
+
+  // ── Idempotency (offline outbox replays) ──
+  const nonce = typeof body.nonce === "string" && body.nonce.length <= 64 ? body.nonce : "";
+  if (nonce) {
+    const dup = await env.DB.prepare("SELECT id FROM messages WHERE nonce = ?")
+      .bind(nonce)
+      .first<{ id: string }>();
+    if (dup) return { id: dup.id };
+  }
+
+  const table = ctx.isDm ? "dm_messages" : "messages";
+  const col = ctx.isDm ? "dm_channel_id" : "channel_id";
   const id = genId();
   const ts = now();
+  const author = await displayNameFor(env, user);
 
   await env.DB.prepare(
     `INSERT INTO ${table}
        (id, ${col}, author, author_id, session_id, text, color, timestamp,
         reactions, edited, edited_at, pinned, pinned_at, file_url, file_type,
-        file_name, file_size, reply_to, thread_id, mentions, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 0, NULL, ?, ?, ?, ?, ?, ?, ?, ?)`
+        file_name, file_size, reply_to, thread_id, mentions, nonce, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 0, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       id,
       channelId,
-      (body.author as string) || user.fullName || "Anonymous",
-      (body.authorId as string) || user.id,
-      (body.sessionId as string) || user.id,
-      (body.text as string) || "",
-      (body.color as string) || "#8B5CF6",
-      (body.timestamp as string) || ts,
-      stringifyJson(body.reactions || {}),
-      (body.fileUrl as string) || null,
-      (body.fileType as string) || null,
-      (body.fileName as string) || null,
-      (body.fileSize as number) || null,
+      author,
+      user.id,
+      user.id,
+      text,
+      String(body.color || "#8B5CF6").slice(0, 20),
+      typeof body.timestamp === "string" && !Number.isNaN(Date.parse(body.timestamp))
+        ? body.timestamp
+        : ts,
+      stringifyJson({}),
+      typeof body.fileUrl === "string" ? body.fileUrl : null,
+      String(body.fileType || "").slice(0, 100) || null,
+      String(body.fileName || "").slice(0, 255) || null,
+      typeof body.fileSize === "number" ? body.fileSize : null,
       body.replyTo ? stringifyJson(body.replyTo) : null,
-      (body.threadId as string) || null,
-      body.mentions ? stringifyJson(body.mentions) : null,
+      typeof body.threadId === "string" ? body.threadId.slice(0, 64) : null,
+      mentions.length > 0 ? stringifyJson(mentions) : null,
+      nonce || null,
       ts
     )
     .run();
 
-  if (dm) {
+  if (ctx.isDm) {
     await env.DB.prepare(
       `UPDATE dm_channels SET last_message_at = ?, last_message_text = ?,
               last_message_author = ? WHERE id = ?`
     )
-      .bind(
-        ts,
-        String(body.text || "").slice(0, 100),
-        (body.author as string) || user.fullName || "Anonymous",
-        channelId
-      )
+      .bind(ts, text.slice(0, 100) || (body.fileName as string) || "📎 attachment", author, channelId)
       .run();
   }
 
-  return id;
+  // ── Notifications ──
+  await afterMessageInsert(env, ctx, { id, channelId, text, author, mentions, replyTo: body.replyTo, threadId: body.threadId }, user);
+
+  return { id };
+}
+
+async function afterMessageInsert(
+  env: Env,
+  ctx: Awaited<ReturnType<typeof channelContext>>,
+  msg: { id: string; channelId: string; text: string; author: string; mentions: string[]; replyTo?: unknown; threadId?: unknown },
+  user: SessionUser
+) {
+  const level = ctx.isDm
+    ? "default"
+    : await getChannelNotificationLevel(env, user.id, msg.channelId);
+  if (level === "muted") return;
+
+  const mentionsAllowed = level === "mentions" || level === "default";
+  const generalAllowed = level === "default";
+
+  // Mentions → resolve display names to users, notify each.
+  if (mentionsAllowed && msg.mentions.length > 0) {
+    const targets = await resolveUsersByName(env, msg.mentions);
+    for (const targetId of targets) {
+      if (targetId === user.id) continue;
+      await createNotification(env, {
+        targetUserId: targetId,
+        type: "mention",
+        title: `${msg.author} mentioned you`,
+        body: msg.text.slice(0, 200) || "in a message",
+        data: { channelId: msg.channelId, messageId: msg.id, serverId: ctx.serverId || "" },
+      });
+    }
+  }
+
+  // Replies → notify the parent message author.
+  if (generalAllowed && (msg.replyTo || msg.threadId)) {
+    const parentId = String((msg.threadId as string) || (msg.replyTo as { id?: string })?.id || "");
+    if (parentId) {
+      const table = ctx.isDm ? "dm_messages" : "messages";
+      const parent = await env.DB.prepare(`SELECT author_id, author FROM ${table} WHERE id = ?`)
+        .bind(parentId)
+        .first<{ author_id: string; author: string }>();
+      if (parent && parent.author_id && parent.author_id !== user.id) {
+        await createNotification(env, {
+          targetUserId: parent.author_id,
+          type: "reply",
+          title: `${msg.author} replied to you`,
+          body: msg.text.slice(0, 200) || "in a message",
+          data: { channelId: msg.channelId, messageId: parentId, serverId: ctx.serverId || "" },
+        });
+      }
+    }
+  }
+
+  // DMs → notify the other participant(s).
+  if (generalAllowed && ctx.isDm && ctx.dmParticipants.length > 0) {
+    for (const participantId of ctx.dmParticipants) {
+      if (participantId === user.id) continue;
+      await createNotification(env, {
+        targetUserId: participantId,
+        type: "dm",
+        title: `New message from ${msg.author}`,
+        body: msg.text.slice(0, 200) || "📎 Attachment",
+        data: { channelId: msg.channelId, messageId: msg.id, serverId: "" },
+      });
+    }
+  }
 }
 
 // ═══════════ handlers ═══════════
@@ -268,27 +457,53 @@ export async function handleCrud(
   // ── Uploads / assets ──
   if (p === "/upload" && method === "POST") {
     const kind = (url.searchParams.get("kind") || "files").replace(/[^a-z-]/g, "");
+    const ctype = (request.headers.get("Content-Type") || "application/octet-stream").split(";")[0].toLowerCase();
+    // Allowlist by kind — never accept active content (SVG/HTML/JS/WASM/exe).
+    const allowed: Record<string, string[]> = {
+      icons: ["image/png", "image/jpeg", "image/gif", "image/webp"],
+      avatars: ["image/png", "image/jpeg", "image/gif", "image/webp"],
+      "channel-icons": ["image/png", "image/jpeg", "image/gif", "image/webp"],
+      uploads: [
+        "image/png", "image/jpeg", "image/gif", "image/webp",
+        "video/mp4", "video/webm",
+        "audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav", "audio/webm",
+        "application/pdf", "text/plain", "application/json",
+      ],
+      files: [
+        "image/png", "image/jpeg", "image/gif", "image/webp",
+        "video/mp4", "video/webm",
+        "audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav", "audio/webm",
+        "application/pdf", "text/plain", "application/json",
+        "application/zip",
+      ],
+    };
+    const kinds = allowed[kind] || allowed.uploads;
+    if (!kinds.includes(ctype)) return json({ error: "file_type_not_allowed" }, 415, env);
+
     const extMap: Record<string, string> = {
       "image/png": "png",
       "image/jpeg": "jpg",
       "image/gif": "gif",
       "image/webp": "webp",
-      "image/svg+xml": "svg",
-      "application/pdf": "pdf",
-      "text/plain": "txt",
-      "application/json": "json",
-      "audio/mpeg": "mp3",
       "video/mp4": "mp4",
+      "video/webm": "webm",
+      "audio/mpeg": "mp3",
+      "audio/mp4": "m4a",
+      "audio/ogg": "ogg",
+      "audio/wav": "wav",
+      "audio/webm": "weba",
+      "application/pdf": "pdf",
+      "application/json": "json",
+      "application/zip": "zip",
+      "text/plain": "txt",
     };
-    const ctype = request.headers.get("Content-Type") || "application/octet-stream";
-    const ext = extMap[ctype.split(";")[0]] || "bin";
+    const ext = extMap[ctype] || "bin";
     const key = `${kind}/${Date.now()}_${genToken(4)}.${ext}`;
     const buf = await request.arrayBuffer();
     if (buf.byteLength > 25 * 1024 * 1024) return json({ error: "file_too_large" }, 413, env);
     await env.ASSETS.put(key, buf, { metadata: { contentType: ctype } });
     return json({ url: `${workerOrigin(request)}/assets/${key}` }, 200, env);
   }
-
 
   // ── Config / admin ──
   if (p === "/config/settings" && method === "GET") {
@@ -323,20 +538,44 @@ export async function handleCrud(
     return json((results || []).map(mapServer), 200, env);
   }
   if (p === "/servers" && method === "GET") {
-    const { results } = await env.DB.prepare("SELECT * FROM servers ORDER BY name").all<Record<string, unknown>>();
+    // Privacy: only communities the caller belongs to (or created, or which are
+    // public) are listed — private communities of other users are not leaked.
+    const { results } = await env.DB.prepare(
+      `SELECT s.* FROM servers s
+       LEFT JOIN server_members m ON m.server_id = s.id AND m.user_id = ? AND m.banned = 0
+       WHERE s.privacy = 'public' OR s.created_by = ? OR m.id IS NOT NULL
+       ORDER BY s.name`
+    )
+      .bind(user.id, user.id)
+      .all<Record<string, unknown>>();
     return json((results || []).map(mapServer), 200, env);
   }
   if (p === "/servers" && method === "POST") {
     const body = await readJson<{ name?: string; description?: string; privacy?: string }>(request);
     if (!body.name || !body.name.trim()) return json({ error: "name_required" }, 400, env);
+    const name = body.name.trim().slice(0, MAX_TITLE_LEN);
     const id = genId();
     const ts = now();
-    await env.DB.prepare(
-      `INSERT INTO servers (id, name, description, privacy, icon, member_count, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, '', 1, ?, ?, ?)`
-    )
-      .bind(id, body.name.trim(), (body.description || "").trim(), body.privacy || "private", user.id, ts, ts)
-      .run();
+    // Creator becomes the owner — insert the membership row (RBAC baseline).
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO servers (id, name, description, privacy, icon, member_count, created_by, created_at, updated_at)
+         VALUES (?, ?, ?, ?, '', 1, ?, ?, ?)`
+      ).bind(id, name, (body.description || "").trim().slice(0, 2000), body.privacy === "public" ? "public" : "private", user.id, ts, ts),
+      env.DB.prepare(
+        `INSERT INTO server_members (id, server_id, user_id, role, joined_at, last_read_at, muted_until, banned)
+         VALUES (?, ?, ?, 'owner', ?, ?, NULL, 0)`
+      ).bind(genId(), id, user.id, ts, ts),
+    ]);
+    await logAudit(env, {
+      serverId: id,
+      actorId: user.id,
+      actorName: user.fullName,
+      action: "server_create",
+      targetType: "server",
+      targetId: id,
+      metadata: { name },
+    });
     return json({ id }, 200, env);
   }
 
@@ -349,6 +588,10 @@ export async function handleCrud(
       return json(mapServer(row), 200, env);
     }
     if (method === "PATCH") {
+      const member = await requireMembership(env, id, user.id);
+      if (!member) return json({ error: "not_a_member" }, 403, env);
+      if (!can(env, member, "MANAGE_SERVER"))
+        return json({ error: "forbidden" }, 403, env);
       const body = await readJson<Record<string, unknown>>(request);
       const fields: string[] = [];
       const vals: unknown[] = [];
@@ -360,19 +603,35 @@ export async function handleCrud(
       ] as const) {
         if (body[key] !== undefined) {
           fields.push(`${col} = ?`);
-          vals.push(body[key]);
+          vals.push(
+            key === "name" ? String(body[key]).trim().slice(0, MAX_TITLE_LEN)
+            : key === "privacy" ? (body[key] === "public" ? "public" : "private")
+            : String(body[key]).slice(0, 2000)
+          );
         }
       }
       if (fields.length === 0) return json({ error: "nothing_to_update" }, 400, env);
       fields.push("updated_at = ?");
       vals.push(now(), id);
       await env.DB.prepare(`UPDATE servers SET ${fields.join(", ")} WHERE id = ?`).bind(...vals).run();
+      await logAudit(env, {
+        serverId: id,
+        actorId: user.id,
+        actorName: user.fullName,
+        action: "server_update",
+        targetType: "server",
+        targetId: id,
+      });
       return json({ ok: true }, 200, env);
     }
     if (method === "DELETE") {
+      const member = await requireMembership(env, id, user.id);
+      if (!member || !can(env, member, "MANAGE_SERVER"))
+        return json({ error: "forbidden" }, 403, env);
       await env.DB.batch([
         env.DB.prepare("DELETE FROM channels WHERE server_id = ?").bind(id),
         env.DB.prepare("DELETE FROM invites WHERE server_id = ?").bind(id),
+        env.DB.prepare("DELETE FROM server_members WHERE server_id = ?").bind(id),
         env.DB.prepare("DELETE FROM servers WHERE id = ?").bind(id),
       ]);
       return json({ ok: true }, 200, env);
@@ -382,41 +641,91 @@ export async function handleCrud(
   // ── Invites ──
   const inviteMatch = p.match(/^\/servers\/([^/]+)\/invite$/);
   if (inviteMatch && method === "POST") {
+    const member = await requireMembership(env, inviteMatch[1], user.id);
+    if (!member || !can(env, member, "CREATE_INVITE"))
+      return json({ error: "forbidden" }, 403, env);
     const code = genToken(4);
     await env.DB.prepare(
       "INSERT INTO invites (code, server_id, created_by, uses, created_at) VALUES (?, ?, ?, 0, ?)"
     )
       .bind(code, inviteMatch[1], user.id, now())
       .run();
+    await logAudit(env, {
+      serverId: inviteMatch[1],
+      actorId: user.id,
+      actorName: user.fullName,
+      action: "invite_create",
+      targetType: "invite",
+      targetId: code,
+    });
     return json({ code }, 200, env);
   }
   if (p === "/invites/join" && method === "POST") {
     const { code } = await readJson<{ code?: string }>(request);
     const row = await env.DB.prepare("SELECT * FROM invites WHERE code = ?").bind(code || "").first<Record<string, unknown>>();
     if (!row) return json({ error: "invalid_code" }, 404, env);
+    const existing = await getMembership(env, row.server_id as string, user.id);
+    if (existing?.banned) return json({ error: "banned" }, 403, env);
     await env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ?").bind(code).run();
     await env.DB.prepare(
-      `INSERT INTO server_members (id, server_id, user_id, role, joined_at, last_read_at)
-       VALUES (?, ?, ?, 'member', ?, ?) ON CONFLICT DO NOTHING`
+      `INSERT INTO server_members (id, server_id, user_id, role, joined_at, last_read_at, muted_until, banned)
+       VALUES (?, ?, ?, 'member', ?, ?, NULL, 0) ON CONFLICT(server_id, user_id) DO NOTHING`
     )
       .bind(genId(), row.server_id, user.id, now(), now())
       .run();
+    await env.DB.prepare("UPDATE servers SET member_count = member_count + 1 WHERE id = ?")
+      .bind(row.server_id)
+      .run();
+    // Notify the owner of the join.
+    const server = await env.DB.prepare("SELECT created_by, name FROM servers WHERE id = ?")
+      .bind(row.server_id)
+      .first<{ created_by: string; name: string }>();
+    if (server && server.created_by !== user.id) {
+      await createNotification(env, {
+        targetUserId: server.created_by,
+        type: "invite",
+        title: `${user.fullName || "Someone"} joined ${server.name}`,
+        data: { serverId: row.server_id as string },
+      });
+    }
+    await logAudit(env, {
+      serverId: row.server_id as string,
+      actorId: user.id,
+      actorName: user.fullName,
+      action: "member_join",
+      targetType: "user",
+      targetId: user.id,
+      metadata: { invite: code },
+    });
     return json({ serverId: row.server_id }, 200, env);
   }
 
   // ── Channels ──
   const channelsMatch = p.match(/^\/servers\/([^/]+)\/channels$/);
   if (channelsMatch && method === "GET") {
+    const serverId = channelsMatch[1];
+    const member = await getMembership(env, serverId, user.id);
+    if (!member || member.banned) {
+      // Non-members may only browse public communities.
+      const row = await env.DB.prepare("SELECT privacy FROM servers WHERE id = ?")
+        .bind(serverId)
+        .first<{ privacy: string }>();
+      if (!row || row.privacy !== "public") return json({ error: "not_a_member" }, 403, env);
+    }
     const { results } = await env.DB.prepare(
-      "SELECT * FROM channels WHERE server_id = ? ORDER BY name"
+      "SELECT * FROM channels WHERE server_id = ? ORDER BY position ASC, name ASC"
     )
-      .bind(channelsMatch[1])
+      .bind(serverId)
       .all<Record<string, unknown>>();
     return json((results || []).map(mapChannel), 200, env);
   }
   if (channelsMatch && method === "POST") {
+    const member = await requireMembership(env, channelsMatch[1], user.id);
+    if (!member || !can(env, member, "CREATE_CHANNELS"))
+      return json({ error: "forbidden" }, 403, env);
     const body = await readJson<{ name?: string; category?: string; type?: string; icon?: string; topic?: string }>(request);
     if (!body.name || !body.name.trim()) return json({ error: "name_required" }, 400, env);
+    const name = body.name.trim().toLowerCase().replace(/\s+/g, "-").slice(0, 64);
     const id = genId();
     const ts = now();
     await env.DB.prepare(
@@ -426,48 +735,82 @@ export async function handleCrud(
       .bind(
         id,
         channelsMatch[1],
-        body.name.trim().toLowerCase().replace(/\s+/g, "-"),
-        body.category || "Text Channels",
-        body.type || "text",
-        body.topic || "",
-        (body.icon ? 1 : 0),
-        body.icon || "",
+        name,
+        String(body.category || "Text Channels").slice(0, 100),
+        body.type === "voice" || body.type === "announcement" ? body.type : "text",
+        String(body.topic || "").slice(0, 500),
+        body.icon ? 1 : 0,
+        typeof body.icon === "string" ? body.icon.slice(0, 1000) : "",
         user.id,
         ts,
         ts
       )
       .run();
+    await logAudit(env, {
+      serverId: channelsMatch[1],
+      actorId: user.id,
+      actorName: user.fullName,
+      action: "channel_create",
+      targetType: "channel",
+      targetId: id,
+      metadata: { name },
+    });
     return json({ id }, 200, env);
   }
 
   const channelMatch = p.match(/^\/channels\/([^/]+)$/);
-  if (channelMatch && method === "PATCH") {
-    const body = await readJson<Record<string, unknown>>(request);
-    const fields: string[] = [];
-    const vals: unknown[] = [];
-    for (const [col, key] of [["name", "name"], ["icon", "icon"], ["topic", "topic"]] as const) {
-      if (body[key] !== undefined) {
-        fields.push(`${col} = ?`);
-        vals.push(body[key]);
+  if (channelMatch && (method === "PATCH" || method === "DELETE")) {
+    const channel = await env.DB.prepare("SELECT server_id FROM channels WHERE id = ?")
+      .bind(channelMatch[1])
+      .first<{ server_id: string }>();
+    if (!channel) return json({ error: "not_found" }, 404, env);
+    const member = await requireMembership(env, channel.server_id, user.id);
+    if (!member || !can(env, member, "MANAGE_CHANNELS"))
+      return json({ error: "forbidden" }, 403, env);
+    if (method === "PATCH") {
+      const body = await readJson<Record<string, unknown>>(request);
+      const fields: string[] = [];
+      const vals: unknown[] = [];
+      for (const [col, key] of [["name", "name"], ["icon", "icon"], ["topic", "topic"]] as const) {
+        if (body[key] !== undefined) {
+          fields.push(`${col} = ?`);
+          vals.push(
+            key === "name" ? String(body[key]).trim().toLowerCase().replace(/\s+/g, "-").slice(0, 64)
+            : String(body[key]).slice(0, 1000)
+          );
+        }
       }
+      if (fields.length === 0) return json({ error: "nothing_to_update" }, 400, env);
+      fields.push("updated_at = ?");
+      vals.push(now(), channelMatch[1]);
+      await env.DB.prepare(`UPDATE channels SET ${fields.join(", ")} WHERE id = ?`).bind(...vals).run();
+      return json({ ok: true }, 200, env);
     }
-    if (fields.length === 0) return json({ error: "nothing_to_update" }, 400, env);
-    fields.push("updated_at = ?");
-    vals.push(now(), channelMatch[1]);
-    await env.DB.prepare(`UPDATE channels SET ${fields.join(", ")} WHERE id = ?`).bind(...vals).run();
-    return json({ ok: true }, 200, env);
-  }
-  if (channelMatch && method === "DELETE") {
     await env.DB.batch([
       env.DB.prepare("DELETE FROM messages WHERE channel_id = ?").bind(channelMatch[1]),
       env.DB.prepare("DELETE FROM channels WHERE id = ?").bind(channelMatch[1]),
     ]);
+    await logAudit(env, {
+      serverId: channel.server_id,
+      actorId: user.id,
+      actorName: user.fullName,
+      action: "channel_delete",
+      targetType: "channel",
+      targetId: channelMatch[1],
+    });
     return json({ ok: true }, 200, env);
   }
 
   // ── Messages ──
   const msgsMatch = p.match(/^\/channels\/([^/]+)\/messages$/);
   if (msgsMatch && method === "GET") {
+    const ctx = await channelContext(env, msgsMatch[1], user.id);
+    if (!ctx.isDm) {
+      if (!ctx.member) return json({ error: "not_a_member" }, 403, env);
+      const { role, overrides } = ctx;
+      if (role && !hasCapability(role, "READ_MESSAGE_HISTORY", overrides))
+        return json({ error: "forbidden" }, 403, env);
+    }
     const before = url.searchParams.get("before") || undefined;
     const limit = parseInt(url.searchParams.get("limit") || "50", 10);
     const threadId = url.searchParams.get("thread") || undefined;
@@ -476,8 +819,12 @@ export async function handleCrud(
   }
   if (msgsMatch && method === "POST") {
     const body = await readJson<Record<string, unknown>>(request);
-    const id = await insertMessage(env, msgsMatch[1], body, user);
-    return json({ id }, 200, env);
+    const result = await insertMessage(env, msgsMatch[1], body, user);
+    if (result.error) {
+      const status = result.error === "flood_protected" ? 429 : 403;
+      return json({ error: result.error }, status, env);
+    }
+    return json({ id: result.id }, 200, env);
   }
 
   const pinsMatch = p.match(/^\/channels\/([^/]+)\/pins$/);
@@ -499,17 +846,60 @@ export async function handleCrud(
     if (!row) return json({ error: "not_found" }, 404, env);
     return json(mapMessage(row), 200, env);
   }
+
   if (msgMatch && method === "PATCH") {
+    const row =
+      (await env.DB.prepare("SELECT * FROM messages WHERE id = ?").bind(msgMatch[1]).first<Record<string, unknown>>()) ||
+      (await env.DB.prepare("SELECT * FROM dm_messages WHERE id = ?").bind(msgMatch[1]).first<Record<string, unknown>>());
+    if (!row) return json({ error: "not_found" }, 404, env);
+    const isDm = !row.channel_id;
+    const channelId = (row.channel_id as string) || (row.dm_channel_id as string);
+    const isAuthor =
+      (row.author_id as string) === user.id ||
+      ((row.author_id as string) || "") === "" && (row.session_id as string) === user.id;
+    if (!isAuthor) {
+      const ctx = await channelContext(env, channelId, user.id);
+      if (ctx.isDm || !ctx.member || !ctx.role || !hasCapability(ctx.role, "MANAGE_MESSAGES", ctx.overrides))
+        return json({ error: "forbidden" }, 403, env);
+    }
     const { text } = await readJson<{ text?: string }>(request);
-    await env.DB.prepare("UPDATE messages SET text = ?, edited = 1, edited_at = ? WHERE id = ?")
-      .bind((text || "").trim(), now(), msgMatch[1])
-      .run();
+    const nextText = String(text || "").trim().slice(0, MAX_TEXT_LEN);
+    if (!nextText) return json({ error: "empty_message" }, 400, env);
+    const previousText = (row.text as string) || "";
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO message_edits (id, message_id, previous_text, edited_by, created_at)
+         VALUES (?, ?, ?, ?, ?)`
+      ).bind(genId(), msgMatch[1], previousText.slice(0, MAX_TEXT_LEN), user.id, now()),
+      env.DB.prepare(`UPDATE ${isDm ? "dm_messages" : "messages"} SET text = ?, edited = 1, edited_at = ? WHERE id = ?`)
+        .bind(nextText, now(), msgMatch[1]),
+    ]);
     return json({ ok: true }, 200, env);
   }
+
   if (msgMatch && method === "DELETE") {
+    const row =
+      (await env.DB.prepare("SELECT * FROM messages WHERE id = ?").bind(msgMatch[1]).first<Record<string, unknown>>()) ||
+      (await env.DB.prepare("SELECT * FROM dm_messages WHERE id = ?").bind(msgMatch[1]).first<Record<string, unknown>>());
+    if (!row) return json({ error: "not_found" }, 404, env);
+    const isDm = !row.channel_id;
+    const channelId = (row.channel_id as string) || (row.dm_channel_id as string);
+    const isAuthor =
+      (row.author_id as string) === user.id ||
+      ((row.author_id as string) || "") === "" && (row.session_id as string) === user.id;
+    if (!isAuthor) {
+      const ctx = await channelContext(env, channelId, user.id);
+      if (ctx.isDm || !ctx.member || !ctx.role || !hasCapability(ctx.role, "MANAGE_MESSAGES", ctx.overrides))
+        return json({ error: "forbidden" }, 403, env);
+    }
+    // Tombstone: keep the row for moderation/audit, hide from fetch.
+    const table = isDm ? "dm_messages" : "messages";
+    const col = isDm ? "dm_channel_id" : "channel_id";
     await env.DB.batch([
-      env.DB.prepare("DELETE FROM messages WHERE id = ? OR thread_id = ?").bind(msgMatch[1], msgMatch[1]),
-      env.DB.prepare("DELETE FROM dm_messages WHERE id = ?").bind(msgMatch[1]),
+      env.DB.prepare(`UPDATE ${table} SET deleted = 1, file_url = NULL WHERE id = ? OR (thread_id = ? AND deleted = 0)`)
+        .bind(msgMatch[1], msgMatch[1]),
+      env.DB.prepare(`DELETE FROM ${table} WHERE ${col} = ? AND deleted = 1 AND timestamp < ?`)
+        .bind(channelId, new Date(Date.now() - 30 * 86400000).toISOString()),
     ]);
     return json({ ok: true }, 200, env);
   }
@@ -517,7 +907,7 @@ export async function handleCrud(
   const threadMatch = p.match(/^\/threads\/([^/]+)$/);
   if (threadMatch && method === "GET") {
     const { results } = await env.DB.prepare(
-      "SELECT * FROM messages WHERE thread_id = ? ORDER BY timestamp ASC LIMIT 200"
+      "SELECT * FROM messages WHERE thread_id = ? AND deleted = 0 ORDER BY timestamp ASC LIMIT 200"
     )
       .bind(threadMatch[1])
       .all<Record<string, unknown>>();
@@ -526,20 +916,72 @@ export async function handleCrud(
 
   const pinMatch = p.match(/^\/messages\/([^/]+)\/pin$/);
   if (pinMatch && method === "POST") {
-    const row = await env.DB.prepare("SELECT pinned FROM messages WHERE id = ?").bind(pinMatch[1]).first<{ pinned: number }>();
+    const row = await env.DB.prepare("SELECT * FROM messages WHERE id = ?")
+      .bind(pinMatch[1])
+      .first<Record<string, unknown>>();
     if (!row) return json({ error: "not_found" }, 404, env);
+    const ctx = await channelContext(env, row.channel_id as string, user.id);
+    if (ctx.isDm || !ctx.member || !ctx.role || !hasCapability(ctx.role, "PIN_MESSAGES", ctx.overrides))
+      return json({ error: "forbidden" }, 403, env);
+    const pinned = Boolean(row.pinned);
     await env.DB.prepare("UPDATE messages SET pinned = ?, pinned_at = ? WHERE id = ?")
-      .bind(row.pinned ? 0 : 1, row.pinned ? null : now(), pinMatch[1])
+      .bind(pinned ? 0 : 1, pinned ? null : now(), pinMatch[1])
       .run();
+    await logAudit(env, {
+      serverId: ctx.serverId || "",
+      actorId: user.id,
+      actorName: user.fullName,
+      action: pinned ? "message_unpin" : "message_pin",
+      targetType: "message",
+      targetId: pinMatch[1],
+    });
     return json({ ok: true }, 200, env);
   }
 
   const reactMatch = p.match(/^\/messages\/([^/]+)\/reactions$/);
   if (reactMatch && method === "PUT") {
+    const row =
+      (await env.DB.prepare("SELECT * FROM messages WHERE id = ?").bind(reactMatch[1]).first<Record<string, unknown>>()) ||
+      (await env.DB.prepare("SELECT * FROM dm_messages WHERE id = ?").bind(reactMatch[1]).first<Record<string, unknown>>());
+    if (!row) return json({ error: "not_found" }, 404, env);
+    const isDm = !row.channel_id;
+    const channelId = (row.channel_id as string) || (row.dm_channel_id as string);
+    const ctx = await channelContext(env, channelId, user.id);
+    if (ctx.isDm) {
+      if (!ctx.isParticipant) return json({ error: "not_a_participant" }, 403, env);
+    } else if (!ctx.member || (ctx.role && !hasCapability(ctx.role, "ADD_REACTIONS", ctx.overrides))) {
+      return json({ error: "forbidden" }, 403, env);
+    }
     const { reactions } = await readJson<{ reactions?: Record<string, string[]> }>(request);
-    await env.DB.prepare("UPDATE messages SET reactions = ? WHERE id = ?")
-      .bind(stringifyJson(reactions || {}), reactMatch[1])
+    // Validate shape defensively.
+    const clean: Record<string, string[]> = {};
+    if (reactions && typeof reactions === "object") {
+      for (const [emoji, users] of Object.entries(reactions).slice(0, 40)) {
+        if (emoji.length > 32) continue;
+        if (Array.isArray(users)) {
+          clean[emoji] = users.filter((u) => typeof u === "string" && u.length <= 80).slice(0, 200);
+        }
+      }
+    }
+    const previous = parseJson<Record<string, string[]>>(row.reactions as string, {});
+    const prevCount = Object.values(previous).reduce((n, u) => n + u.length, 0);
+    const nextCount = Object.values(clean).reduce((n, u) => n + u.length, 0);
+    await env.DB.prepare(`UPDATE ${isDm ? "dm_messages" : "messages"} SET reactions = ? WHERE id = ?`)
+      .bind(stringifyJson(clean), reactMatch[1])
       .run();
+    // Notify the author when someone else adds a reaction (avoid spam: only on +1).
+    const authorId = row.author_id as string;
+    if (nextCount > prevCount && authorId && authorId !== user.id) {
+      const emojiAdded = Object.entries(clean).find(
+        ([emoji, users]) => users.length > (previous[emoji]?.length || 0)
+      );
+      await createNotification(env, {
+        targetUserId: authorId,
+        type: "reaction",
+        title: `${user.fullName || "Someone"} reacted with ${emojiAdded?.[0] || "👍"}`,
+        data: { channelId, messageId: reactMatch[1] },
+      });
+    }
     return json({ ok: true }, 200, env);
   }
 
@@ -554,6 +996,10 @@ export async function handleCrud(
   if (p === "/dm-channels" && method === "POST") {
     const { participantId } = await readJson<{ participantId?: string }>(request);
     if (!participantId || participantId === user.id) return json({ error: "invalid_participant" }, 400, env);
+    const target = await env.DB.prepare("SELECT id FROM users WHERE id = ?")
+      .bind(participantId)
+      .first();
+    if (!target) return json({ error: "user_not_found" }, 404, env);
     const { results } = await env.DB.prepare("SELECT * FROM dm_channels").all<Record<string, unknown>>();
     const existing = (results || []).find((r) => {
       const parts = parseJson<string[]>(r.participants as string, []);
@@ -580,7 +1026,7 @@ export async function handleCrud(
        VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET created_at = excluded.created_at, display_name = excluded.display_name`
     )
-      .bind(id, channelId, user.id, displayName || user.fullName, user.id, now())
+      .bind(id, channelId, user.id, String(displayName || user.fullName).slice(0, 80), user.id, now())
       .run();
     return json({ ok: true }, 200, env);
   }
@@ -624,7 +1070,7 @@ export async function handleCrud(
        ON CONFLICT(session_id) DO UPDATE SET display_name = excluded.display_name,
          color = excluded.color, online = 1, last_seen = excluded.last_seen`
     )
-      .bind(genId(), user.id, displayName || user.fullName, color || "#8B5CF6", now(), now())
+      .bind(genId(), user.id, String(displayName || user.fullName).slice(0, 80), String(color || "#8B5CF6").slice(0, 20), now(), now())
       .run();
     return json({ ok: true }, 200, env);
   }
@@ -657,14 +1103,14 @@ export async function handleCrud(
   if (p === "/profiles" && method === "PUT") {
     const body = await readJson<{ name?: string; avatar?: string; color?: string }>(request);
     const ts = now();
-    const name = (body.name || user.fullName || "").trim();
+    const name = String(body.name || user.fullName || "").trim().slice(0, 80);
     await env.DB.prepare(
       `INSERT INTO profiles (id, session_id, name, avatar, color, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(session_id) DO UPDATE SET name = excluded.name, avatar = excluded.avatar,
          color = excluded.color, updated_at = excluded.updated_at`
     )
-      .bind(genId(), user.id, name, body.avatar || "", body.color || "#8B5CF6", ts, ts)
+      .bind(genId(), user.id, name, String(body.avatar || "").slice(0, 2000), String(body.color || "#8B5CF6").slice(0, 20), ts, ts)
       .run();
     return json({ ok: true }, 200, env);
   }
@@ -686,6 +1132,9 @@ export async function handleCrud(
   }
   if (p === "/stats/xp" && method === "POST") {
     const { amount, reason } = await readJson<{ amount?: number; reason?: string }>(request);
+    // Cap award amounts — the server decides XP, not the client.
+    const amt = Math.max(0, Math.min(Math.round(Number(amount) || 0), 100));
+    const why = ["message", "reaction", "reply", "call", "event"].includes(reason || "") ? reason : "message";
     const uid = user.id;
     const today = now().split("T")[0];
     let row = await env.DB.prepare("SELECT * FROM stats WHERE session_id = ?").bind(uid).first<Record<string, unknown>>();
@@ -700,20 +1149,19 @@ export async function handleCrud(
       row = await env.DB.prepare("SELECT * FROM stats WHERE session_id = ?").bind(uid).first<Record<string, unknown>>();
     }
     if (!row) return json({ error: "internal" }, 500, env);
-    const amt = amount || 0;
     const newXp = ((row.xp as number) || 0) + amt;
     const level = Math.floor(Math.sqrt(newXp / 100)) + 1;
     let streak = (row.streak_count as number) || 0;
     let msgs = (row.messages_sent as number) || 0;
     let reacts = (row.reactions_received as number) || 0;
     let replies = (row.replies_received as number) || 0;
-    if (reason === "message") {
+    if (why === "message") {
       msgs += 1;
       const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
       streak = (row.last_message_date as string) === yesterday ? streak + 1 : (row.last_message_date as string) === today ? streak : 1;
     }
-    if (reason === "reaction") reacts += 1;
-    if (reason === "reply") replies += 1;
+    if (why === "reaction") reacts += 1;
+    if (why === "reply") replies += 1;
     const badges = computeBadges({ xp: newXp, messagesSent: msgs, reactionsReceived: reacts, repliesReceived: replies, streakCount: streak });
     await env.DB.prepare(
       `UPDATE stats SET xp = ?, level = ?, messages_sent = ?, reactions_received = ?,
@@ -727,7 +1175,7 @@ export async function handleCrud(
 
   // ── Call log ──
   if (p === "/call-log" && method === "GET") {
-    const limit = parseInt(url.searchParams.get("limit") || "50", 10);
+    const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10), 200);
     const { results } = await env.DB.prepare(
       "SELECT * FROM call_log WHERE caller_id = ? OR callee_id = ? ORDER BY started_at DESC LIMIT ?"
     )
@@ -751,13 +1199,13 @@ export async function handleCrud(
         id,
         body.callerId || user.id,
         body.calleeId || "",
-        (body.callerName as string) || "",
-        (body.calleeName as string) || "",
+        String(body.callerName || "").slice(0, 80),
+        String(body.calleeName || "").slice(0, 80),
         body.video ? 1 : 0,
-        (body.status as string) || "ringing",
-        (body.startedAt as string) || now(),
-        (body.endedAt as string) || null,
-        (body.durationMs as number) || null,
+        String(body.status || "ringing").slice(0, 20),
+        String(body.startedAt || now()).slice(0, 64),
+        body.endedAt ? String(body.endedAt).slice(0, 64) : null,
+        typeof body.durationMs === "number" ? body.durationMs : null,
         now()
       )
       .run();
@@ -808,6 +1256,9 @@ export async function handleCrud(
   }
   if (p === "/board-posts" && method === "POST") {
     const body = await readJson<Record<string, unknown>>(request);
+    const title = String(body.title || "").trim().slice(0, MAX_TITLE_LEN);
+    const postBody = String(body.body || "").trim().slice(0, MAX_BODY_LEN);
+    if (!title) return json({ error: "title_required" }, 400, env);
     const id = genId();
     await env.DB.prepare(
       `INSERT INTO board_posts (id, title, body, category, author_id, author_name, author_avatar, author_color, vote_count, created_at)
@@ -815,13 +1266,13 @@ export async function handleCrud(
     )
       .bind(
         id,
-        (body.title as string) || "",
-        (body.body as string) || "",
-        (body.category as string) || "general",
-        (body.authorId as string) || user.id,
-        (body.authorName as string) || user.fullName,
-        (body.authorAvatar as string) || "",
-        (body.authorColor as string) || "#a078ff",
+        title,
+        postBody,
+        String(body.category || "general").slice(0, 50),
+        user.id,
+        user.fullName,
+        String(body.authorAvatar || "").slice(0, 2000),
+        String(body.authorColor || "#a078ff").slice(0, 20),
         now()
       )
       .run();
@@ -857,6 +1308,8 @@ export async function handleCrud(
   }
   if (p === "/notification-settings" && method === "PUT") {
     const body = await readJson<Record<string, unknown>>(request);
+    const dndStart = /^\d{2}:\d{2}$/.test(String(body.dndStart || "")) ? String(body.dndStart) : "22:00";
+    const dndEnd = /^\d{2}:\d{2}$/.test(String(body.dndEnd || "")) ? String(body.dndEnd) : "08:00";
     await env.DB.prepare(
       `INSERT INTO notification_settings (session_id, push_enabled, sound_enabled, message_sound, call_ringtone, dnd_enabled, dnd_days, dnd_start, dnd_end, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -870,26 +1323,26 @@ export async function handleCrud(
         user.id,
         body.pushEnabled ? 1 : 0,
         body.soundEnabled !== false ? 1 : 0,
-        (body.messageSound as string) || "Pop",
-        (body.callRingtone as string) || "Classic",
+        String(body.messageSound || "Pop").slice(0, 50),
+        String(body.callRingtone || "Classic").slice(0, 50),
         body.dndEnabled ? 1 : 0,
-        stringifyJson(body.dndDays || []),
-        (body.dndStart as string) || "22:00",
-        (body.dndEnd as string) || "08:00",
+        stringifyJson(Array.isArray(body.dndDays) ? body.dndDays.filter((d) => typeof d === "string").slice(0, 7) : []),
+        dndStart,
+        dndEnd,
         now()
       )
       .run();
     return json({ ok: true }, 200, env);
   }
 
-  // ── Notifications queue ──
+  // ── Notifications queue (push delivery) ──
   if (p === "/notifications/queue" && method === "POST") {
     const body = await readJson<{ userId?: string; title?: string; body?: string; data?: Record<string, unknown> }>(request);
     if (!body.userId || !body.title) return json({ error: "userId and title are required" }, 400, env);
     await env.DB.prepare(
-      "INSERT INTO notifications (id, target_user_id, title, body, data, sent, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)"
+      "INSERT INTO notifications (id, target_user_id, title, body, data, sent, read, created_at) VALUES (?, ?, ?, ?, ?, 0, 0, ?)"
     )
-      .bind(genId(), body.userId, body.title, body.body || "", stringifyJson(body.data || {}), now())
+      .bind(genId(), body.userId, String(body.title).slice(0, 300), String(body.body || "").slice(0, 300), stringifyJson(body.data || {}), now())
       .run();
     return json({ ok: true }, 200, env);
   }
@@ -909,7 +1362,7 @@ export async function handleCrud(
     }
     if (tag) {
       where.push("tags LIKE ?");
-      binds.push(`%"${tag}"%`);
+      binds.push(`%\"${String(tag).replace(/[^a-z0-9-]/gi, "")}\"%`);
     }
     if (where.length) sql += " WHERE " + where.join(" AND ");
     sql += " ORDER BY published_at DESC LIMIT ? OFFSET ?";
@@ -928,7 +1381,9 @@ export async function handleCrud(
 }
 
 /** Serve an uploaded file. Called from the router BEFORE the auth gate so
- *  images/files are publicly readable (browsers don't send Authorization). */
+ *  images/files are publicly readable (browsers don't send Authorization).
+ *  Active content is defanged: nosniff + a null CSP sandbox means even if a
+ *  malicious file slips through the upload allowlist it cannot execute. */
 export async function serveAsset(env: Env, key: string): Promise<Response | null> {
   const { value, metadata } = await env.ASSETS.getWithMetadata(key, { type: "arrayBuffer" });
   if (value === null) return null;
@@ -937,6 +1392,9 @@ export async function serveAsset(env: Env, key: string): Promise<Response | null
   headers.set("Content-Type", meta.contentType || "application/octet-stream");
   headers.set("Cache-Control", "public, max-age=31536000, immutable");
   headers.set("Access-Control-Allow-Origin", env.CORS_ORIGIN || "*");
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Content-Security-Policy", "default-src 'none'; sandbox");
+  headers.set("Cross-Origin-Resource-Policy", "cross-origin");
   return new Response(value, { headers });
 }
 
@@ -960,3 +1418,4 @@ function computeBadges(s: { xp: number; messagesSent: number; reactionsReceived:
 }
 
 export { getSessionUser };
+export type { Capability };

@@ -1,6 +1,8 @@
 'use client';
 
 import { Store } from '@/lib/store';
+import { Markdown } from '@/components/Markdown';
+import { useToast } from '@/components/ui/Toast';
 import type { Message } from '@/lib/types';
 import {
   Reply,
@@ -9,9 +11,8 @@ import {
   Edit3,
   Trash2,
   Pin,
-  Check,
-  CheckCheck,
-  MoreHorizontal,
+  Flag,
+  Clock,
   FileText,
   Image as ImageIcon,
 } from '@/components/ui/icons';
@@ -75,9 +76,23 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const threadReplies = messages.filter((m) => m.threadId === msg.id);
   const threadReplyCount = threadReplies.length;
+  const pending = Boolean((msg as Message & { pending?: boolean }).pending);
+  const { toast } = useToast();
 
   const handleOpenImage = (url: string) => {
     setLightboxSrc(url);
+  };
+
+  const handleReport = () => {
+    const channel = Store.channels.find((c) => c.id === msg.channelId);
+    if (!channel) {
+      toast("Can't report messages in direct chats", "error");
+      return;
+    }
+    Store.moderation
+      .report(channel.serverId, "message", msg.id, "Reported from the message menu")
+      .then(() => toast("Report sent to the moderators", "success"))
+      .catch(() => toast("Couldn't send the report", "error"));
   };
 
   const handleReplyClick = () => {
@@ -208,9 +223,9 @@ export function MessageBubble({
                 </button>
               </div>
             ) : (
-              <div className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+              <Markdown className="text-sm leading-relaxed">
                 {msg.text}
-              </div>
+              </Markdown>
             )}
 
             {/* File attachment */}
@@ -293,13 +308,15 @@ export function MessageBubble({
             {/* Timestamp inside bubble for same-author group */}
             {isSameAuthor && !isEditing && (
               <div
-                className={`text-[10px] mt-1 ${
+                className={`text-[10px] mt-1 flex items-center gap-1 ${
                   isOwn
-                    ? 'text-right text-[var(--color-txt-muted)]'
-                    : 'text-left text-[var(--color-txt-muted)]'
+                    ? 'justify-end text-right text-[var(--color-txt-muted)]'
+                    : 'justify-start text-left text-[var(--color-txt-muted)]'
                 }`}
               >
+                {pending && <Clock size={10} aria-label="Sending" />}
                 {formatTime(msg.timestamp)}
+                {pending && <span className="italic">sending…</span>}
               </div>
             )}
 
@@ -341,6 +358,16 @@ export function MessageBubble({
                 >
                   <ThumbsUp size={13} />
                 </button>
+                {!isOwn && (
+                  <button
+                    onClick={handleReport}
+                    className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--color-bg-hover)] text-[var(--color-txt-muted)] hover:text-amber-400 transition-all"
+                    title="Report"
+                    aria-label={`Report ${msg.author}'s message`}
+                  >
+                    <Flag size={13} />
+                  </button>
+                )}
                 {isOwn && (
                   <button
                     onClick={() => startEdit(msg)}
