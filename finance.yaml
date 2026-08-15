@@ -1,0 +1,114 @@
+# ==============================================================================
+# Omix Community — Financial & Sustainability Specification
+# Schema: Finance & Infrastructure Economics v1.0
+# ==============================================================================
+
+meta:
+  project_name: "Omix Community"
+  organization: "Omix Systems"
+  currency: "USD"
+  fiscal_year: 2026
+  version: "1.0.0"
+
+# ------------------------------------------------------------------------------
+# 1. Infrastructure Cost Breakdown (Monthly Estimated Operating Expenditure)
+# ------------------------------------------------------------------------------
+infrastructure_costs:
+  hosting_and_cdn:
+    provider: "Vercel / Netlify / Firebase Hosting"
+    tier: "Pro / Scale"
+    estimated_monthly_cost: 20.00
+    notes: "Client-only PWA static assets served globally via CDN."
+
+  database_and_auth:
+    provider: "Supabase"
+    tier: "Pro Plan"
+    estimated_monthly_cost: 25.00
+    notes: "PostgreSQL database, Row Level Security (RLS), Auth, and Realtime WebSocket engine."
+
+  edge_compute:
+    provider: "Cloudflare Workers & D1"
+    tier: "Workers Paid Plan"
+    estimated_monthly_cost: 5.00
+    notes: "Global edge Workers API for Boardroom RFC upvoting, cron notifications, and D1 SQLite storage."
+
+  realtime_messaging:
+    provider: "Ably Chat"
+    tier: "Pay-as-you-go"
+    estimated_monthly_cost: 15.00
+    notes: "Real-time presence and fallback high-concurrency message broadcasting."
+
+  webrtc_voice:
+    provider: "Jitsi as a Service (8x8)"
+    tier: "Developer / Free Tier"
+    estimated_monthly_cost: 0.00
+    notes: "Peer-to-peer audio and screen share huddles."
+
+  domain_and_dns:
+    provider: "Cloudflare Registrar"
+    estimated_monthly_cost: 1.25
+    notes: "omix.dev domain renewal (~$15.00/yr)."
+
+  total_monthly_infrastructure_opex: 66.25
+
+# ------------------------------------------------------------------------------
+# 2. Revenue & Monetization Strategy
+# ------------------------------------------------------------------------------
+monetization_models:
+  open_source_sponsorships:
+    channels:
+      - "GitHub Sponsors"
+      - "Open Collective"
+    target_monthly_revenue: 250.00
+    description: "Community grants and individual developer sponsorships."
+
+  enterprise_managed_instances:
+    tier_name: "Omix Cloud Enterprise"
+    pricing: "Custom quote ($99/mo per community server)"
+    features:
+      - "Dedicated Supabase DB instance"
+      - "Custom domain & SSL configuration"
+      - "SAML / Single Sign-On (SSO) integration"
+      - "Guaranteed 99.9% uptime SLA"
+    projected_monthly_revenue: 495.00
+
+  marketplace_integrations:
+    type: "Developer Webhooks & Bots"
+    pricing: "Revenue share on premium developer bots & extensions"
+    projected_monthly_revenue: 100.00
+
+# ------------------------------------------------------------------------------
+# 3. Sponsorship Tiers & Perks
+# ------------------------------------------------------------------------------
+sponsor_tiers:
+  - id: "tier_supporter"
+    name: "Community Supporter"
+    monthly_price: 5.00
+    perks:
+      - "Special Supporter badge on Omix profile"
+      - "Access to private #supporters channel in Omix HQ"
+
+  - id: "tier_developer"
+    name: "Pro Developer"
+    monthly_price: 15.00
+    perks:
+      - "All Supporter perks"
+      - "Priority voting weight on Boardroom RFC proposals"
+      - "Early access to v2.x beta releases"
+
+  - id: "tier_sponsor"
+    name: "Corporate Sponsor"
+    monthly_price: 100.00
+    perks:
+      - "All Pro Developer perks"
+      - "Company logo featured on README.md and Landing Page"
+      - "Direct channel access to core maintainers"
+
+# ------------------------------------------------------------------------------
+# 4. Monthly Budget Allocation
+# ------------------------------------------------------------------------------
+budget_allocation_percentages:
+  infrastructure_and_hosting: 30
+  security_and_audits: 20
+  community_grants_and_bounties: 35
+  reserve_fund: 15
