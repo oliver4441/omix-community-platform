@@ -100,6 +100,9 @@ export {
   Cpu,
   Radio,
   Terminal,
+  Layers,
+  Activity,
+  Lock,
   // Brand
   Github,
   Twitter,

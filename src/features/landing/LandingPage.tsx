@@ -18,6 +18,11 @@ import {
   Globe,
   Radio,
   Share2,
+  Menu,
+  X,
+  Layers,
+  Activity,
+  Lock,
 } from "@/components/ui/icons";
 
 interface LandingPageProps {
@@ -35,6 +40,7 @@ export function LandingPage({
   const [githubError, setGithubError] = useState("");
   const [activeTab, setActiveTab] = useState<"chat" | "boardroom" | "profile" | "voice">("chat");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleGithub = async () => {
     setGithubBusy(true);
@@ -59,9 +65,9 @@ export function LandingPage({
     <div className="min-h-screen bg-background text-on-background font-body-md flex flex-col overflow-x-hidden selection:bg-primary-container selection:text-on-primary-container">
       {/* Background ambient lighting glow */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="hero-glow top-0 left-1/2 -translate-x-1/2" />
-        <div className="absolute top-[40%] right-[-10%] w-[500px] h-[500px] bg-secondary/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[10%] left-[-10%] w-[600px] h-[600px] bg-primary/10 rounded-full blur-[140px]" />
+        <div className="hero-glow top-0 left-1/2 -translate-x-1/2 animate-pulse" />
+        <div className="absolute top-[30%] right-[-10%] w-[500px] h-[500px] bg-secondary/15 rounded-full blur-[140px] animate-pulse" />
+        <div className="absolute bottom-[10%] left-[-10%] w-[600px] h-[600px] bg-primary/15 rounded-full blur-[160px]" />
       </div>
 
       {/* Navigation Bar */}
@@ -69,7 +75,7 @@ export function LandingPage({
         <div className="flex justify-between items-center px-4 sm:px-8 py-4 w-full max-w-7xl mx-auto">
           {/* Brand Logo */}
           <div className="flex items-center gap-3">
-            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-primary-container to-secondary-container p-0.5 shadow-[0_0_15px_rgba(208,188,255,0.3)] flex items-center justify-center">
+            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-primary-container to-secondary-container p-0.5 shadow-[0_0_15px_rgba(208,188,255,0.3)] flex items-center justify-center transition-transform hover:scale-105">
               <div className="w-full h-full bg-surface-container-lowest rounded-[10px] flex items-center justify-center overflow-hidden">
                 <img src="/logo-192.png" alt="Omix Logo" className="w-7 h-7 object-contain" />
               </div>
@@ -78,7 +84,7 @@ export function LandingPage({
               <span className="font-headline-sm text-headline-sm font-black text-on-surface tracking-tight leading-none">
                 Omix
               </span>
-              <span className="font-label-caps text-[10px] text-primary tracking-widest uppercase">
+              <span className="font-label-caps text-[10px] text-primary tracking-widest uppercase font-semibold">
                 Community
               </span>
             </div>
@@ -86,6 +92,9 @@ export function LandingPage({
 
           {/* Desktop Nav Links */}
           <nav className="hidden md:flex items-center gap-8 font-label-caps text-label-caps text-on-surface-variant">
+            <a href="#about" className="hover:text-primary transition-colors">
+              About
+            </a>
             <a href="#features" className="hover:text-primary transition-colors">
               Features
             </a>
@@ -103,8 +112,8 @@ export function LandingPage({
             </a>
           </nav>
 
-          {/* CTAs */}
-          <div className="flex items-center gap-3">
+          {/* Desktop CTAs */}
+          <div className="hidden md:flex items-center gap-3">
             <button
               onClick={onSignIn}
               className="px-4 py-2 rounded text-on-surface hover:text-primary font-label-caps text-label-caps transition-colors"
@@ -113,42 +122,113 @@ export function LandingPage({
             </button>
             <button
               onClick={onGetStarted}
-              className="bg-primary text-on-primary px-4 sm:px-5 py-2 sm:py-2.5 rounded font-label-caps text-label-caps hover:bg-primary-container transition-all shadow-[0_0_20px_rgba(208,188,255,0.25)] flex items-center gap-2 active:scale-95"
+              className="bg-primary text-on-primary px-5 py-2.5 rounded font-label-caps text-label-caps hover:bg-primary-container transition-all shadow-[0_0_20px_rgba(208,188,255,0.3)] flex items-center gap-2 active:scale-95"
             >
               Get Started
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Mobile Menu Toggle */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-lg text-on-surface hover:bg-surface-container-high transition-colors"
+            aria-label="Toggle navigation menu"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
+
+        {/* Mobile Navigation Drawer Overlay */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-surface-container-lowest/95 backdrop-blur-2xl border-b border-outline-variant/50 px-6 py-6 flex flex-col gap-5 animate-fade-in">
+            <a
+              href="#about"
+              onClick={() => setMobileMenuOpen(false)}
+              className="font-body-md text-base text-on-surface hover:text-primary"
+            >
+              About Omix
+            </a>
+            <a
+              href="#features"
+              onClick={() => setMobileMenuOpen(false)}
+              className="font-body-md text-base text-on-surface hover:text-primary"
+            >
+              Features
+            </a>
+            <a
+              href="#showcase"
+              onClick={() => setMobileMenuOpen(false)}
+              className="font-body-md text-base text-on-surface hover:text-primary"
+            >
+              Ecosystem
+            </a>
+            <a
+              href="#faq"
+              onClick={() => setMobileMenuOpen(false)}
+              className="font-body-md text-base text-on-surface hover:text-primary"
+            >
+              FAQ
+            </a>
+            <a
+              href="mailto:support@omix.dev"
+              onClick={() => setMobileMenuOpen(false)}
+              className="font-body-md text-base text-on-surface hover:text-primary"
+            >
+              Support
+            </a>
+            <div className="flex flex-col gap-3 pt-4 border-t border-outline-variant/40">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onSignIn();
+                }}
+                className="w-full py-3 rounded-lg border border-outline-variant text-on-surface font-label-caps text-sm text-center"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onGetStarted();
+                }}
+                className="w-full py-3 rounded-lg bg-primary text-on-primary font-label-caps text-sm font-bold flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(208,188,255,0.3)]"
+              >
+                Get Started Free
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}
       <main className="flex-grow flex flex-col relative w-full z-10">
         {/* Hero Section */}
-        <section className="w-full max-w-7xl mx-auto px-4 sm:px-8 pt-16 sm:pt-24 pb-16">
+        <section className="w-full max-w-7xl mx-auto px-4 sm:px-8 pt-12 sm:pt-20 pb-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             {/* Left Column: Headlines & Actions */}
             <div className="lg:col-span-7 flex flex-col items-start gap-6">
               {/* Badge */}
-              <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary font-label-caps text-label-caps shadow-[0_0_12px_rgba(208,188,255,0.15)]">
-                <span className="relative flex h-2 w-2">
+              <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border border-primary/40 bg-primary/10 text-primary font-label-caps text-xs shadow-[0_0_15px_rgba(208,188,255,0.2)]">
+                <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-secondary"></span>
                 </span>
-                <span>v2.0 Beta Live · Open Source PWA</span>
+                <span>v2.0 Beta Live · Open Source Client-Only PWA</span>
               </div>
 
               {/* Title */}
-              <h1 className="font-display-lg text-display-lg text-on-surface tracking-tight leading-tight">
+              <h1 className="font-display-lg text-4xl sm:text-5xl lg:text-6xl text-on-surface tracking-tight leading-tight">
                 The Unified Communication Ecosystem for{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-tertiary">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-tertiary animate-pulse">
                   Developers
                 </span>
                 .
               </h1>
 
               {/* Description */}
-              <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl leading-relaxed">
+              <p className="font-body-lg text-base sm:text-lg text-on-surface-variant max-w-2xl leading-relaxed">
                 Merge real-time intimacy with structured RFC thread permanence. Engineered with a lightning-fast client-only React 19 architecture, native developer tools, and instant code execution context.
               </p>
 
@@ -156,15 +236,15 @@ export function LandingPage({
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto pt-2">
                 <button
                   onClick={onGetStarted}
-                  className="bg-primary text-on-primary px-8 py-3.5 rounded font-label-caps text-label-caps hover:bg-primary-container transition-all shadow-[0_0_25px_rgba(208,188,255,0.35)] flex items-center justify-center gap-2.5 active:scale-98 text-sm font-bold"
+                  className="bg-primary text-on-primary px-8 py-4 rounded-lg font-label-caps text-sm font-bold hover:bg-primary-container transition-all shadow-[0_0_25px_rgba(208,188,255,0.35)] flex items-center justify-center gap-2.5 active:scale-95 group"
                 >
                   Launch App Free
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" />
                 </button>
                 <button
                   onClick={handleGithub}
                   disabled={githubBusy}
-                  className="glass-panel text-on-surface px-6 py-3.5 rounded font-label-caps text-label-caps hover:bg-surface-container-highest transition-all flex items-center justify-center gap-2.5 disabled:opacity-60 border border-outline-variant/60 text-sm"
+                  className="glass-panel text-on-surface px-6 py-4 rounded-lg font-label-caps text-sm hover:bg-surface-container-highest transition-all flex items-center justify-center gap-2.5 disabled:opacity-60 border border-outline-variant/60"
                 >
                   <Github className="w-5 h-5 text-on-surface" />
                   {githubBusy ? "Connecting GitHub…" : "Sign in with GitHub"}
@@ -197,10 +277,10 @@ export function LandingPage({
               </div>
             </div>
 
-            {/* Right Column: Interactive Graphic / IDE Mockup */}
+            {/* Right Column: Floating Graphic / Mockup */}
             <div className="lg:col-span-5 relative">
-              <div className="relative rounded-2xl p-1 bg-gradient-to-b from-outline-variant/80 via-outline-variant/20 to-transparent shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                <div className="bg-surface-container-lowest/90 rounded-[14px] p-4 flex flex-col gap-3 backdrop-blur-md">
+              <div className="relative rounded-2xl p-1 bg-gradient-to-b from-outline-variant/80 via-outline-variant/20 to-transparent shadow-[0_20px_60px_rgba(0,0,0,0.6)] transform hover:-translate-y-1 transition-transform duration-300">
+                <div className="bg-surface-container-lowest/95 rounded-[14px] p-4 flex flex-col gap-3 backdrop-blur-md">
                   {/* Mock Window Bar */}
                   <div className="flex items-center justify-between pb-3 border-b border-outline-variant/40">
                     <div className="flex items-center gap-2">
@@ -218,8 +298,8 @@ export function LandingPage({
                   </div>
 
                   {/* Mock Chat Message 1 */}
-                  <div className="flex items-start gap-3 p-2.5 rounded-lg bg-surface-container-low/60 border border-outline-variant/30">
-                    <div className="w-8 h-8 rounded-full bg-primary-container/80 text-on-primary-container flex items-center justify-center font-bold text-xs shrink-0">
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-container-low/60 border border-outline-variant/30">
+                    <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xs shrink-0">
                       JS
                     </div>
                     <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -275,8 +355,64 @@ export function LandingPage({
           </div>
         </section>
 
+        {/* Detailed About Section */}
+        <section id="about" className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-20 border-t border-outline-variant/30">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="flex flex-col gap-5">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 border border-secondary/30 text-secondary font-label-caps text-xs w-fit">
+                <Layers className="w-4 h-4" />
+                About Omix Architecture
+              </div>
+              <h2 className="font-headline-md text-3xl sm:text-4xl font-bold text-on-surface">
+                Engineered for High-Velocity Engineering Teams
+              </h2>
+              <p className="font-body-md text-on-surface-variant leading-relaxed">
+                Traditional developer tools force teams to split their time between noisy real-time chat apps and disconnected forum software. Omix combines both into a single, unified client-only Progressive Web App.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/40 flex flex-col gap-2">
+                  <Activity className="w-5 h-5 text-primary" />
+                  <h4 className="font-bold text-sm text-on-surface">Client-Only Speed</h4>
+                  <p className="text-xs text-on-surface-variant">Runs entirely in the browser with zero server hydration delay or cold starts.</p>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/40 flex flex-col gap-2">
+                  <Lock className="w-5 h-5 text-secondary" />
+                  <h4 className="font-bold text-sm text-on-surface">PostgreSQL & RLS</h4>
+                  <p className="text-xs text-on-surface-variant">Granular row-level security and automated Supabase database backups.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Architecture Card */}
+            <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-outline-variant/60 flex flex-col gap-6">
+              <h3 className="font-headline-sm text-xl font-bold text-on-surface flex items-center gap-2">
+                <Code className="w-5 h-5 text-primary" />
+                Tech Stack Architecture
+              </h3>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30">
+                  <span className="font-code-md text-xs text-on-surface-variant">Frontend Application</span>
+                  <span className="font-code-md text-xs font-bold text-primary">React 19 + Next.js 16 (Static Export)</span>
+                </div>
+                <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30">
+                  <span className="font-code-md text-xs text-on-surface-variant">Data & Auth Engine</span>
+                  <span className="font-code-md text-xs font-bold text-secondary">Supabase PostgreSQL + Realtime</span>
+                </div>
+                <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30">
+                  <span className="font-code-md text-xs text-on-surface-variant">Edge Compute Microservices</span>
+                  <span className="font-code-md text-xs font-bold text-tertiary">Cloudflare Workers + D1 SQLite</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-code-md text-xs text-on-surface-variant">Peer-to-Peer Audio/Video</span>
+                  <span className="font-code-md text-xs font-bold text-on-surface">Jitsi WebRTC SDK</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Metrics / Social Proof Bar */}
-        <section className="w-full border-y border-outline-variant/30 bg-surface-container-lowest/60 backdrop-blur-md py-8">
+        <section className="w-full border-y border-outline-variant/30 bg-surface-container-lowest/60 backdrop-blur-md py-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-8 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div className="flex flex-col items-center">
               <span className="font-display-lg text-3xl sm:text-4xl font-black text-primary">
@@ -319,7 +455,7 @@ export function LandingPage({
             <span className="font-label-caps text-xs text-primary uppercase tracking-widest font-semibold">
               Ecosystem Showcase
             </span>
-            <h2 className="font-headline-md text- headline-md text-display-lg sm:text-4xl font-bold text-on-surface">
+            <h2 className="font-headline-md text-headline-md sm:text-4xl font-bold text-on-surface">
               Built Specifically for the Modern Software Stack
             </h2>
             <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
@@ -755,7 +891,7 @@ export function LandingPage({
             <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
               <button
                 onClick={onGetStarted}
-                className="bg-primary text-on-primary px-8 py-4 rounded font-label-caps text-label-caps font-bold hover:bg-primary-container transition-all shadow-[0_0_30px_rgba(208,188,255,0.4)] flex items-center gap-2 text-sm"
+                className="bg-primary text-on-primary px-8 py-4 rounded-lg font-label-caps text-sm font-bold hover:bg-primary-container transition-all shadow-[0_0_30px_rgba(208,188,255,0.4)] flex items-center gap-2 text-sm active:scale-95"
               >
                 Create Account Free
                 <ArrowRight className="w-4 h-4" />
@@ -763,7 +899,7 @@ export function LandingPage({
               <button
                 onClick={handleGithub}
                 disabled={githubBusy}
-                className="glass-panel text-on-surface px-6 py-4 rounded font-label-caps text-label-caps hover:bg-surface-container-highest transition-all flex items-center gap-2 border border-outline-variant/60 text-sm"
+                className="glass-panel text-on-surface px-6 py-4 rounded-lg font-label-caps text-sm hover:bg-surface-container-highest transition-all flex items-center gap-2 border border-outline-variant/60 text-sm"
               >
                 <Github className="w-5 h-5" />
                 Sign in with GitHub
@@ -788,7 +924,7 @@ export function LandingPage({
 
           <div className="flex items-center gap-6 font-label-caps text-xs text-on-surface-variant">
             <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-secondary" />
+              <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
               All Systems Operational
             </span>
             <a
