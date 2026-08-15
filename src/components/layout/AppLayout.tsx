@@ -28,7 +28,7 @@ export function AppLayout() {
   const [boardDraft, setBoardDraft] = useState<{ title: string; body?: string; category?: string } | null>(null);
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
+    const check = () => setIsMobile(window.innerWidth < 1024);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -75,65 +75,67 @@ export function AppLayout() {
       </ErrorBoundary>
 
       {/* Main content area */}
-      <div className="flex-1 flex overflow-hidden">
-        {view === "dms" ? (
-          <>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-16 lg:pb-0">
+        <div className="flex-1 flex overflow-hidden">
+          {view === "dms" ? (
+            <>
+              <ErrorBoundary>
+                <DMSidebar
+                  isMobile={isMobile}
+                  currentView={view}
+                  displayName={user?.displayName || "User"}
+                  setView={setView}
+                />
+              </ErrorBoundary>
+              <ErrorBoundary>
+                <ChatPane
+                  isMobile={isMobile}
+                  currentView={view}
+                  displayName={user?.displayName || "User"}
+                />
+              </ErrorBoundary>
+            </>
+          ) : view === "boards" ? (
             <ErrorBoundary>
-              <DMSidebar
+              <BoardroomFeed isMobile={isMobile} initialDraft={boardDraft} />
+            </ErrorBoundary>
+          ) : view === "feed" ? (
+            <ErrorBoundary>
+              <FeedPage
                 isMobile={isMobile}
-                currentView={view}
-                displayName={user?.displayName || "User"}
-                setView={setView}
+                onStartDiscussion={(draft) => {
+                  setBoardDraft(draft);
+                  setView("boards");
+                }}
               />
             </ErrorBoundary>
+          ) : view === "profile" ? (
             <ErrorBoundary>
-              <ChatPane
-                isMobile={isMobile}
-                currentView={view}
-                displayName={user?.displayName || "User"}
-              />
+              <DeveloperProfile isMobile={isMobile} displayName={user?.displayName || "User"} />
             </ErrorBoundary>
-          </>
-        ) : view === "boards" ? (
-          <ErrorBoundary>
-            <BoardroomFeed isMobile={isMobile} initialDraft={boardDraft} />
-          </ErrorBoundary>
-        ) : view === "feed" ? (
-          <ErrorBoundary>
-            <FeedPage
-              isMobile={isMobile}
-              onStartDiscussion={(draft) => {
-                setBoardDraft(draft);
-                setView("boards");
-              }}
-            />
-          </ErrorBoundary>
-        ) : view === "profile" ? (
-          <ErrorBoundary>
-            <DeveloperProfile isMobile={isMobile} displayName={user?.displayName || "User"} />
-          </ErrorBoundary>
-        ) : view === "settings" ? (
-          <ErrorBoundary>
-            <SettingsPage isMobile={isMobile} displayName={user?.displayName || "User"} />
-          </ErrorBoundary>
-        ) : (
-          <>
+          ) : view === "settings" ? (
             <ErrorBoundary>
-              <ChannelSidebar
-                isMobile={isMobile}
-                currentView={view}
-                displayName={user?.displayName || "User"}
-              />
+              <SettingsPage isMobile={isMobile} displayName={user?.displayName || "User"} />
             </ErrorBoundary>
-            <ErrorBoundary>
-              <ChatPane
-                isMobile={isMobile}
-                currentView={view}
-                displayName={user?.displayName || "User"}
-              />
-            </ErrorBoundary>
-          </>
-        )}
+          ) : (
+            <>
+              <ErrorBoundary>
+                <ChannelSidebar
+                  isMobile={isMobile}
+                  currentView={view}
+                  displayName={user?.displayName || "User"}
+                />
+              </ErrorBoundary>
+              <ErrorBoundary>
+                <ChatPane
+                  isMobile={isMobile}
+                  currentView={view}
+                  displayName={user?.displayName || "User"}
+                />
+              </ErrorBoundary>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Clear a pending board draft once the user leaves the boardroom */}
