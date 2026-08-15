@@ -94,6 +94,12 @@ export {
   Zap,
   Award,
   Sparkles,
+  ArrowRight,
+  CheckCircle2,
+  Code,
+  Cpu,
+  Radio,
+  Terminal,
   // Brand
   Github,
   Twitter,

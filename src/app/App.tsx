@@ -159,6 +159,7 @@ function AppInner() {
         return (
           <LandingPage
             onGetStarted={() => setFlow("signup")}
+            onSignIn={() => setFlow("signin")}
             onGithub={() => signInWithGithub().catch(() => {})}
           />
         );
