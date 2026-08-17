@@ -27,6 +27,23 @@ function write(items: OmixNotification[]) {
 export function addNotification(notification: OmixNotification) {
   const items = read().filter((item) => item.id !== notification.id);
   write([notification, ...items]);
+  if (!notification.read) showBrowserNotification(notification);
+}
+
+export function showBrowserNotification(notification: OmixNotification) {
+  if (typeof window === "undefined" || !("Notification" in window)) return;
+  if (Notification.permission !== "granted") return;
+  try {
+    const n = new Notification(notification.title, { body: notification.body, tag: `omix-${notification.id}` });
+    if (notification.href) n.onclick = () => { window.focus(); window.location.assign(notification.href!); };
+  } catch {}
+}
+
+export async function requestNotificationPermission(): Promise<boolean> {
+  if (typeof window === "undefined" || !("Notification" in window)) return false;
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied") return false;
+  return (await Notification.requestPermission()) === "granted";
 }
 
 export function markNotificationRead(id: string) {
