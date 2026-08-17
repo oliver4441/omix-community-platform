@@ -3,26 +3,17 @@ name: Frontend CI / Vercel Deploy
 on:
   push:
     branches: [master]
-    paths:
-      - "src/**"
-      - "public/**"
-      - "next.config.ts"
-      - "package.json"
-      - "package-lock.json"
-      - "vercel.json"
-      - ".github/workflows/deploy-frontend.yml"
+  pull_request:
+    branches: [master]
   workflow_dispatch:
 
 concurrency:
-  group: vercel-deploy
-  cancel-in-progress: false
-
-env:
-  VERCEL_ORG_ID: team_osZxoIzDBMePUxtd5biFGhyo
-  VERCEL_PROJECT_ID: prj_ksUDMBaVNiLEQXsSno0gNbhIOXk1
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
+    name: Build frontend
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -43,30 +34,9 @@ jobs:
         env:
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
 
-      - name: Check Vercel CLI credentials
-        id: vercel_credentials
-        shell: bash
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Report deployment model
         run: |
-          if [ -n "$VERCEL_TOKEN" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-            echo "Vercel CLI credentials are configured for omix-community."
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::VERCEL_TOKEN is not configured. Skipping CLI deployment."
-          fi
-
-      - name: Pull Vercel environment
-        if: steps.vercel_credentials.outputs.available == 'true'
-        run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build Vercel production artifacts
-        if: steps.vercel_credentials.outputs.available == 'true'
-        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
-
-      - name: Deploy to Vercel (production)
-        if: steps.vercel_credentials.outputs.available == 'true'
-        run: npx vercel deploy --prebuilt --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+          echo "Frontend build passed."
+          echo "Vercel Git integration is responsible for production deployment."
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Commit: $GITHUB_SHA"
