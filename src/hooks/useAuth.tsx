@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { api, getToken, setToken, setUserId } from "@/lib/api";
+import { api, setToken, setUserId } from "@/lib/api";
 import { exchangeFirebaseToken } from "@/lib/firebaseSession";
 import { auth, googleProvider, githubProvider, default as firebase } from "@/lib/firebase";
 
@@ -28,9 +28,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>(null!);
 
-function mapUser(u: firebase.User): AuthUser {
+function mapUser(u: firebase.User, appUserId?: string): AuthUser {
   return {
-    uid: u.uid,
+    // Omix's existing D1 user id remains the app-level identity so existing
+    // profiles, DMs, rewards and permissions do not change ownership.
+    uid: appUserId || u.uid,
     email: u.email || null,
     displayName: u.displayName || u.email?.split("@")[0] || "User",
     photoURL: u.photoURL || null,
@@ -38,11 +40,11 @@ function mapUser(u: firebase.User): AuthUser {
 }
 
 async function syncFirebaseUser(fbUser: firebase.User): Promise<AuthUser> {
-  const mapped = mapUser(fbUser);
+  const initial = mapUser(fbUser);
   const idToken = await fbUser.getIdToken();
-  const session = await exchangeFirebaseToken(idToken, mapped);
+  const session = await exchangeFirebaseToken(idToken, initial);
   setUserId(session.user.id);
-  return mapped;
+  return mapUser(fbUser, session.user.id);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -102,11 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await auth.createUserWithEmailAndPassword(email, password);
     if (!result.user) throw new Error("Firebase did not create a user");
     await result.user.updateProfile({ displayName });
-    try {
-      await result.user.sendEmailVerification();
-    } catch {
-      // Account creation should not fail solely because verification mail is unavailable.
-    }
+    try { await result.user.sendEmailVerification(); } catch { /* non-blocking */ }
     await acceptFirebaseUser(result.user);
     return { needsVerification: false };
   }, [acceptFirebaseUser]);
@@ -163,13 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAdmin(false);
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, signIn, signUp, signInWithGoogle, signInWithGithub, resetPassword, resendVerification, updatePassword, signOut }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, loading, isAdmin, signIn, signUp, signInWithGoogle, signInWithGithub, resetPassword, resendVerification, updatePassword, signOut }}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
+export function useAuth() { return useContext(AuthContext); }
