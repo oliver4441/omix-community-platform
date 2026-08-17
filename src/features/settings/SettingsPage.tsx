@@ -4,18 +4,29 @@ import { useState } from "react";
 import { Store } from "@/lib/store";
 import { ThemeFontSettings } from "@/components/ui/ThemeFontSettings";
 
+type SettingsState = {
+  pushEnabled: boolean;
+  soundEnabled: boolean;
+  messageSound: string;
+  callRingtone: string;
+  dndEnabled: boolean;
+  dndDays: string[];
+  dndStart: string;
+  dndEnd: string;
+};
+
 const KEY = "omix_settings";
-const DEFAULT = { pushEnabled: false, soundEnabled: true, messageSound: "Pop", callRingtone: "Classic", dndEnabled: false, dndDays: [] as string[], dndStart: "22:00", dndEnd: "08:00" };
+const DEFAULT: SettingsState = { pushEnabled: false, soundEnabled: true, messageSound: "Pop", callRingtone: "Classic", dndEnabled: false, dndDays: [], dndStart: "22:00", dndEnd: "08:00" };
 const SOUNDS = ["Pop", "Chime", "Ping", "Blip"];
 const RINGTONES = ["Classic", "Digital", "Sonar", "Soft"];
 const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 export function SettingsPage({ displayName }: { isMobile: boolean; displayName: string }) {
-  const [settings, setSettings] = useState(() => {
+  const [settings, setSettings] = useState<SettingsState>(() => {
     if (typeof window === "undefined") return DEFAULT;
-    try { return { ...DEFAULT, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { return DEFAULT; }
+    try { return { ...DEFAULT, ...JSON.parse(localStorage.getItem(KEY) || "{}") } as SettingsState; } catch { return DEFAULT; }
   });
-  const update = (patch: Partial<typeof DEFAULT>) => setSettings((prev) => { const next = { ...prev, ...patch }; localStorage.setItem(KEY, JSON.stringify(next)); return next; });
+  const update = (patch: Partial<SettingsState>) => setSettings((prev: SettingsState) => { const next = { ...prev, ...patch }; localStorage.setItem(KEY, JSON.stringify(next)); return next; });
   const toggleDay = (day: string) => update({ dndDays: settings.dndDays.includes(day) ? settings.dndDays.filter((d) => d !== day) : [...settings.dndDays, day] });
 
   return <div className="flex-1 min-w-0 overflow-y-auto bg-background no-scrollbar">
