@@ -4,13 +4,6 @@
   "git": {
     "deploymentEnabled": true
   },
-  "rewrites": [
-    { "source": "/login", "destination": "/" },
-    { "source": "/signin", "destination": "/" },
-    { "source": "/signup", "destination": "/" },
-    { "source": "/register", "destination": "/" },
-    { "source": "/forgot-password", "destination": "/" }
-  ],
   "headers": [
     {
       "source": "/(.*)",
