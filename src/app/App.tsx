@@ -11,10 +11,12 @@ import { ForgotPasswordScreen } from "@/features/auth/ForgotPasswordScreen";
 import { VerifyEmailScreen } from "@/features/auth/VerifyEmailScreen";
 import { VerificationSuccessScreen } from "@/features/auth/VerificationSuccessScreen";
 import { SetNewPasswordScreen } from "@/features/auth/SetNewPasswordScreen";
+import { ExperienceOnboarding } from "@/features/onboarding/ExperienceOnboarding";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { Store } from "@/lib/store";
+import { getExperiencePreferences } from "@/lib/experience";
 
 type PublicFlow = "landing" | "signin" | "signup" | "forgot" | "verify";
 
@@ -23,10 +25,6 @@ interface AuthLink {
   type: "verify" | "recovery" | "reset";
 }
 
-/**
- * Email links from the worker look like <app>/?token=...&type=verify|reset
- * (legacy recovery links are accepted too).
- */
 function detectAuthLink(): AuthLink | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
@@ -70,8 +68,20 @@ function AppInner() {
   const [authLink, setAuthLink] = useState<AuthLink | null>(detectAuthLink);
   const [verifyDone, setVerifyDone] = useState(false);
   const [verifyError, setVerifyError] = useState("");
+  const [experienceReady, setExperienceReady] = useState(false);
+  const [needsExperienceOnboarding, setNeedsExperienceOnboarding] = useState(false);
 
-  // Consume email-verification links from the URL.
+  useEffect(() => {
+    if (!user) {
+      setExperienceReady(false);
+      setNeedsExperienceOnboarding(false);
+      return;
+    }
+    const preferences = getExperiencePreferences(user.uid);
+    setNeedsExperienceOnboarding(!preferences);
+    setExperienceReady(true);
+  }, [user]);
+
   useEffect(() => {
     if (authLink?.type !== "verify" || verifyDone) return;
     api.auth
@@ -80,7 +90,6 @@ function AppInner() {
       .catch(() => setVerifyError("This verification link is invalid or has expired."));
   }, [authLink, verifyDone]);
 
-  // Request notification permission after login.
   useEffect(() => {
     if (!user) return;
     const timer = setTimeout(() => {
@@ -91,7 +100,6 @@ function AppInner() {
 
   if (loading) return <LoadingScreen />;
 
-  // Password-recovery link → set a new password (no session required).
   if (authLink?.type === "recovery" || authLink?.type === "reset") {
     return (
       <SetNewPasswordScreen
@@ -105,7 +113,6 @@ function AppInner() {
     );
   }
 
-  // Email-verification link.
   if (authLink?.type === "verify") {
     if (verifyError) {
       return (
@@ -163,6 +170,20 @@ function AppInner() {
           />
         );
     }
+  }
+
+  if (!experienceReady) return <LoadingScreen />;
+
+  if (needsExperienceOnboarding) {
+    return (
+      <ExperienceOnboarding
+        uid={user.uid}
+        displayName={user.displayName || "User"}
+        onComplete={() => {
+          setNeedsExperienceOnboarding(false);
+        }}
+      />
+    );
   }
 
   return (
