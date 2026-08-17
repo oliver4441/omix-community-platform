@@ -48,7 +48,7 @@ function clearAuthLinkParams() {
 }
 
 function LoadingScreen() {
-  return <div className="min-h-[100dvh] flex items-center justify-center bg-background"><div className="h-10 w-10 rounded-full" style={{ border: "2px solid var(--color-primary)", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} /></div>;
+  return <div className="min-h-[100dvh] flex items-center justify-center bg-background"><div className="h-10 w-10 rounded-full" style={{ border: "2px solid var(--color-primary)", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />;</div>
 }
 
 function AppInner() {
@@ -58,14 +58,6 @@ function AppInner() {
   const [authLink, setAuthLink] = useState<AuthLink | null>(detectAuthLink);
   const [verifyDone, setVerifyDone] = useState(false);
   const [verifyError, setVerifyError] = useState("");
-  const [experienceReady, setExperienceReady] = useState(false);
-  const [needsExperienceOnboarding, setNeedsExperienceOnboarding] = useState(false);
-
-  useEffect(() => {
-    if (!user) { setExperienceReady(false); setNeedsExperienceOnboarding(false); return; }
-    const preferences = getExperiencePreferences(user.uid);
-    setNeedsExperienceOnboarding(!preferences); setExperienceReady(true);
-  }, [user]);
 
   useEffect(() => {
     if (authLink?.type !== "verify" || verifyDone) return;
@@ -99,8 +91,8 @@ function AppInner() {
     }
   }
 
-  if (!experienceReady) return <LoadingScreen />;
-  if (needsExperienceOnboarding) return <ExperienceOnboarding uid={user.uid} displayName={user.displayName || "User"} onComplete={() => setNeedsExperienceOnboarding(false)} />;
+  const experiencePreferences = getExperiencePreferences(user.uid);
+  if (!experiencePreferences) return <ExperienceOnboarding uid={user.uid} displayName={user.displayName || "User"} onComplete={() => window.location.reload()} />;
 
   return <><AppLayout /><div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 z-[90] md:bottom-5 md:right-5"><PWAInstallButton /></div><PWABanner /></>;
 }
