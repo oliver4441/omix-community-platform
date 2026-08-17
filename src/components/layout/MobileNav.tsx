@@ -1,13 +1,13 @@
 "use client";
 
-import { Bell, Blocks, Home, MessageCircle, UserRound } from "lucide-react";
+import { Blocks, Home, MessageCircle, Phone, UserRound } from "lucide-react";
 import type { AppView } from "@/lib/views";
 
 const TABS: { view: AppView; label: string; icon: typeof Home }[] = [
   { view: "feed", label: "Home", icon: Home },
   { view: "boards", label: "Boards", icon: Blocks },
   { view: "chat", label: "Chat", icon: MessageCircle },
-  { view: "dms", label: "Calls", icon: Bell },
+  { view: "dms", label: "Calls", icon: Phone },
   { view: "profile", label: "Profile", icon: UserRound },
 ];
 
