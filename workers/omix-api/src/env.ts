@@ -13,8 +13,9 @@ export interface Env {
 
   // Vars
   CORS_ORIGIN?: string;
-  /** Frontend origin used for email links + OAuth redirects, e.g. https://omix.app */
   APP_ORIGIN?: string;
+  /** Firebase Web API key. This is a client-side Firebase identifier, not a secret. */
+  FIREBASE_WEB_API_KEY?: string;
   /** Optional shared secret gate for /ably/token. */
   TOKEN_AUTH_SECRET?: string;
 }
