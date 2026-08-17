@@ -6,7 +6,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { ConfirmProvider } from "@/components/ui/ConfirmModal";
 import { PWABanner } from "@/components/ui/PWABanner";
 import { PWAInstallButton } from "@/components/ui/PWAInstallButton";
-import { LandingPageV2 } from "@/features/landing/LandingPageV2";
+import { LandingPage } from "@/features/landing/LandingPage";
 import { AuthScreen } from "@/features/auth/AuthScreen";
 import { ForgotPasswordScreen } from "@/features/auth/ForgotPasswordScreen";
 import { VerifyEmailScreen } from "@/features/auth/VerifyEmailScreen";
@@ -84,7 +84,7 @@ function AppInner() {
       case "signup":
         return <><PublicFlowStyles /><AuthScreen mode={flow} onForgotPassword={() => setFlow("forgot")} onVerifyPending={(email) => { setVerifyEmail(email); setFlow("verify"); }} /></>;
       default:
-        return <><LandingPageV2 onGetStarted={() => setFlow("signup")} onSignIn={() => setFlow("signin")} onGithub={() => signInWithGithub().catch(() => {})} /><div className="fixed bottom-4 right-4 z-50"><PWAInstallButton /></div></>;
+        return <><LandingPage onGetStarted={() => setFlow("signup")} onSignIn={() => setFlow("signin")} onGithub={() => signInWithGithub().catch(() => {})} /><div className="fixed bottom-4 right-4 z-50"><PWAInstallButton /></div></>;
     }
   }
 
