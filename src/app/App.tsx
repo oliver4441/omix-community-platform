@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ConfirmProvider } from "@/components/ui/ConfirmModal";
 import { PWABanner } from "@/components/ui/PWABanner";
@@ -14,7 +14,6 @@ import { VerificationSuccessScreen } from "@/features/auth/VerificationSuccessSc
 import { SetNewPasswordScreen } from "@/features/auth/SetNewPasswordScreen";
 import { ExperienceOnboarding } from "@/features/onboarding/ExperienceOnboarding";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { Store } from "@/lib/store";
 import { getExperiencePreferences } from "@/lib/experience";
@@ -63,7 +62,7 @@ function LoadingScreen() {
 }
 
 function AppInner() {
-  const { user, loading, signInWithGithub } = useAuth();
+  const { user, loading, signInWithGoogle, signInWithGithub } = useAuth();
   const [flow, setFlow] = useState<PublicFlow>("landing");
   const [verifyEmail, setVerifyEmail] = useState("");
   const [authLink, setAuthLink] = useState<AuthLink | null>(detectAuthLink);
@@ -156,6 +155,7 @@ function AppInner() {
         return (
           <AuthScreen
             mode={flow}
+            onBackToHome={() => setFlow("landing")}
             onForgotPassword={() => setFlow("forgot")}
             onVerifyPending={(email) => {
               setVerifyEmail(email);
@@ -167,8 +167,10 @@ function AppInner() {
         return (
           <>
             <LandingPage
-              onGetStarted={() => setFlow("signup")}
-              onGithub={() => signInWithGithub().catch(() => {})}
+              onSignIn={() => setFlow("signin")}
+              onSignUp={() => setFlow("signup")}
+              onGoogle={() => signInWithGoogle()}
+              onGithub={() => signInWithGithub()}
             />
             <div className="fixed bottom-4 right-4 z-50">
               <PWAInstallButton />

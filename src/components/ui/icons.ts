@@ -99,5 +99,8 @@ export {
   Twitter,
 } from "lucide-react";
 
+// Google Icon
+export { Google } from "./GoogleIcon";
+
 // Material Symbols icon component (JSX lives in ./Mso.tsx so tsc accepts it)
 export { Mso } from "./Mso";
