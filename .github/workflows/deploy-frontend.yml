@@ -17,8 +17,6 @@ concurrency:
   group: vercel-deploy
   cancel-in-progress: false
 
-# Fixed to the intended Vercel project: omix-community.
-# Only VERCEL_TOKEN must remain a GitHub secret.
 env:
   VERCEL_ORG_ID: team_osZxoIzDBMePUxtd5biFGhyo
   VERCEL_PROJECT_ID: prj_ksUDMBaVNiLEQXsSno0gNbhIOXk1
@@ -34,7 +32,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
