@@ -1,9 +1,8 @@
 {
   "framework": "nextjs",
   "buildCommand": "next build",
-  "outputDirectory": "dist",
   "git": {
-    "deploymentEnabled": false
+    "deploymentEnabled": true
   },
   "headers": [
     {
