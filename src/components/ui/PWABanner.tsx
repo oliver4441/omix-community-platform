@@ -1,69 +1,56 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "@/components/ui/icons";
+import { Download, X } from "lucide-react";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
 
 export function PWABanner() {
   const [show, setShow] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<Event | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      // Show banner after 3 seconds if not already installed
-      setTimeout(() => {
-        if (
-          !window.matchMedia("(display-mode: standalone)").matches
-        ) {
-          setShow(true);
-        }
-      }, 3000);
+    if (window.matchMedia("(display-mode: standalone)").matches) return;
+    const handler = (event: Event) => {
+      event.preventDefault();
+      setDeferredPrompt(event as BeforeInstallPromptEvent);
+      window.setTimeout(() => setShow(true), 1200);
+    };
+    const installed = () => {
+      setShow(false);
+      setDeferredPrompt(null);
     };
     window.addEventListener("beforeinstallprompt", handler);
-    return () =>
+    window.addEventListener("appinstalled", installed);
+    return () => {
       window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("appinstalled", installed);
+    };
   }, []);
 
-  const handleInstall = () => {
+  const install = async () => {
     if (!deferredPrompt) return;
-    (deferredPrompt as unknown as { prompt: () => Promise<void> })
-      .prompt()
-      .catch(() => {});
+    await deferredPrompt.prompt();
     setShow(false);
+    setDeferredPrompt(null);
   };
 
-  if (!show) return null;
+  if (!show || !deferredPrompt) return null;
 
   return (
-    <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[var(--color-bg-mid)] border border-[var(--color-border)] rounded-[20px] px-5 py-3 shadow-lg flex items-center gap-4 animate-[slideUp_0.3s_ease]">
+    <aside className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-6 md:left-auto md:right-6 md:inset-x-auto z-[100] max-w-md rounded-2xl border border-border bg-background/95 p-3 shadow-2xl backdrop-blur-xl" role="dialog" aria-label="Install Omix">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-[12px] bg-[var(--color-pri)] flex items-center justify-center text-white font-bold text-sm">
-          OS
+        <img src="/logo-192-maskable.png" alt="Omix" className="h-11 w-11 rounded-xl" />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-foreground">Install Omix</p>
+          <p className="text-xs text-muted-foreground">Add Omix to your Android home screen for a faster app-like experience.</p>
         </div>
-        <div>
-          <p className="text-sm font-medium text-[var(--color-txt)]">
-            Install OS
-          </p>
-          <p className="text-xs text-[var(--color-txt-muted)]">
-            Add to home screen for the best experience
-          </p>
-        </div>
+        <button type="button" onClick={() => setShow(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="Dismiss install prompt"><X className="h-4 w-4" /></button>
       </div>
-      <button
-        onClick={handleInstall}
-        className="btn-primary text-sm px-4 py-1.5"
-      >
-        Install
-      </button>
-      <button
-        onClick={() => setShow(false)}
-        className="btn-icon"
-        aria-label="Dismiss"
-      >
-        <X size={16} />
-      </button>
-    </div>
+      <button type="button" onClick={install} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"><Download className="h-4 w-4" />Install now</button>
+    </aside>
   );
 }
