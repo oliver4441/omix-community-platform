@@ -1,4 +1,4 @@
-name: Deploy Frontend (Vercel)
+name: Frontend CI / Vercel Deploy
 
 on:
   push:
@@ -34,35 +34,44 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify required secrets are set
+      - name: Build production application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+
+      - name: Check Vercel CLI credentials
+        id: vercel_credentials
         shell: bash
-        run: |
-          set -e
-          for s in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
-            eval "value=\${$s}"
-            [ -n "$value" ] || { echo "::error::Required secret $s is not set"; exit 1; }
-          done
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "Vercel CLI credentials are configured."
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Vercel CLI secrets are not configured. Skipping CLI deployment; if the repository is connected to Vercel, Vercel's Git integration will deploy the master push automatically."
+          fi
 
       - name: Pull Vercel environment
+        if: steps.vercel_credentials.outputs.available == 'true'
         run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Build project artifacts
+      - name: Build Vercel production artifacts
+        if: steps.vercel_credentials.outputs.available == 'true'
         run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          # Optional: point the app at the deployed omix-api worker. If unset,
-          # the client falls back to the bundled Ably key.
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
 
       - name: Deploy to Vercel (production)
+        if: steps.vercel_credentials.outputs.available == 'true'
         run: npx vercel deploy --prebuilt --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
