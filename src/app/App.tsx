@@ -5,6 +5,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ConfirmProvider } from "@/components/ui/ConfirmModal";
 import { PWABanner } from "@/components/ui/PWABanner";
+import { PWAInstallButton } from "@/components/ui/PWAInstallButton";
 import { LandingPage } from "@/features/landing/LandingPage";
 import { AuthScreen } from "@/features/auth/AuthScreen";
 import { ForgotPasswordScreen } from "@/features/auth/ForgotPasswordScreen";
@@ -164,10 +165,15 @@ function AppInner() {
         );
       default:
         return (
-          <LandingPage
-            onGetStarted={() => setFlow("signup")}
-            onGithub={() => signInWithGithub().catch(() => {})}
-          />
+          <>
+            <LandingPage
+              onGetStarted={() => setFlow("signup")}
+              onGithub={() => signInWithGithub().catch(() => {})}
+            />
+            <div className="fixed bottom-4 right-4 z-50">
+              <PWAInstallButton />
+            </div>
+          </>
         );
     }
   }
@@ -189,6 +195,9 @@ function AppInner() {
   return (
     <>
       <AppLayout />
+      <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 md:bottom-5 md:right-5 z-[90]">
+        <PWAInstallButton />
+      </div>
       <PWABanner />
     </>
   );
