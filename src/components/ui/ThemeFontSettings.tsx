@@ -16,28 +16,30 @@ const fonts = [
   { id: "mono", label: "Developer Mono", family: "ui-monospace, SFMono-Regular, Menlo, monospace" },
 ];
 
+function getSavedVisuals() {
+  if (typeof window === "undefined") return { theme: "violet", font: "inter" };
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) || "{}");
+    return { theme: saved.theme || "violet", font: saved.font || "inter" };
+  } catch {
+    return { theme: "violet", font: "inter" };
+  }
+}
+
 export function ThemeFontSettings() {
-  const [theme, setTheme] = useState("violet");
-  const [font, setFont] = useState("inter");
+  const initial = getSavedVisuals();
+  const [theme, setTheme] = useState(initial.theme);
+  const [font, setFont] = useState(initial.font);
 
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(KEY) || "{}");
-      const nextTheme = saved.theme || "violet";
-      const nextFont = saved.font || "inter";
-      setTheme(nextTheme);
-      setFont(nextFont);
-      applyVisuals(nextTheme, nextFont);
-    } catch {}
-  }, []);
+    applyVisuals(theme, font);
+  }, [theme, font]);
 
   const chooseTheme = (id: string) => {
     setTheme(id);
-    applyVisuals(id, font);
   };
   const chooseFont = (id: string) => {
     setFont(id);
-    applyVisuals(theme, id);
   };
 
   return (
