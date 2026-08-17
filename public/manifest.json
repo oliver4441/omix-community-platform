@@ -1,37 +1,23 @@
 {
+  "id": "/",
   "name": "Omix Community",
-  "short_name": "Omix Chat",
-  "description": "Real-time community chat platform",
-  "start_url": ".",
+  "short_name": "Omix",
+  "description": "A community platform for developers and everyone else.",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0f0f13",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#0b1326",
   "theme_color": "#3390EC",
-  "orientation": "portrait",
-  "categories": ["social", "communication"],
+  "orientation": "portrait-primary",
+  "categories": ["social", "communication", "news"],
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
-    {
-      "src": "/logo-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/logo-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "/logo-192-maskable.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/logo-512-maskable.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ],
-  "screenshots": [],
-  "prefer_related_applications": false
+    { "src": "/logo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/logo-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/logo-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
 }
