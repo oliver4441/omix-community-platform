@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import { Store } from "@/lib/store";
-import { addNotification, getDMSeenAt, markAllNotificationsRead, markNotificationRead, requestBrowserNotifications, setDMSeenAt, showBrowserNotification, subscribeNotifications, type OmixNotification } from "@/lib/notifications";
+import { addNotification, getDMSeenAt, markAllNotificationsRead, markNotificationRead, requestBrowserNotifications, showBrowserNotification, subscribeNotifications, setDMSeenAt, type OmixNotification } from "@/lib/notifications";
 
 export function NotificationBell() {
   const [items, setItems] = useState<OmixNotification[]>([]);
@@ -11,9 +11,6 @@ export function NotificationBell() {
 
   useEffect(() => subscribeNotifications(setItems), []);
 
-  // DMChannel polling is already the Store's fallback synchronization path.
-  // Turn a newly observed remote message into a local notification without
-  // adding another polling loop or another realtime provider.
   useEffect(() => {
     return Store.subscribeDMChannels((dms) => {
       const now = Date.now();
@@ -45,7 +42,7 @@ export function NotificationBell() {
   const openNotification = (item: OmixNotification) => {
     markNotificationRead(item.id);
     setOpen(false);
-    if (item.href) window.location.href = item.href;
+    if (item.href) window.location.assign(item.href);
   };
 
   return <div className="relative">
@@ -56,7 +53,7 @@ export function NotificationBell() {
     {open && <div className="absolute right-0 top-11 z-50 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
       <div className="flex items-center justify-between border-b border-border p-3"><span className="font-semibold">Notifications</span><div className="flex items-center gap-3">{unread > 0 && <button type="button" onClick={markAllNotificationsRead} className="text-xs text-primary">Mark all read</button>}<button type="button" onClick={() => void requestBrowserNotifications()} className="text-xs text-muted-foreground hover:text-foreground">Enable alerts</button></div></div>
       <div className="max-h-80 overflow-y-auto">
-        {items.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">You're all caught up.</p> : items.map((item) => <button key={item.id} type="button" onClick={() => openNotification(item)} className={`block w-full border-b border-border p-3 text-left text-sm hover:bg-muted ${item.read ? "opacity-60" : "bg-primary/5"}`}><p className="font-medium">{item.title}</p>{item.body && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.body}</p>}</button>)}
+        {items.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">You&apos;re all caught up.</p> : items.map((item) => <button key={item.id} type="button" onClick={() => openNotification(item)} className={`block w-full border-b border-border p-3 text-left text-sm hover:bg-muted ${item.read ? "opacity-60" : "bg-primary/5"}`}><p className="font-medium">{item.title}</p>{item.body && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.body}</p>}</button>)}
       </div>
     </div>}
   </div>;
