@@ -67,7 +67,6 @@ function AppInner() {
   }, [user]);
 
   if (loading) return <LoadingScreen />;
-
   if (authLink?.type === "recovery" || authLink?.type === "reset") return <SetNewPasswordScreen token={authLink.token} onDone={() => { setAuthLink(null); clearAuthLinkParams(); setFlow("signin"); }} />;
 
   if (authLink?.type === "verify") {
@@ -84,7 +83,7 @@ function AppInner() {
       case "signup":
         return <><PublicFlowStyles /><AuthScreen mode={flow} onForgotPassword={() => setFlow("forgot")} onVerifyPending={(email) => { setVerifyEmail(email); setFlow("verify"); }} /></>;
       default:
-        return <><LandingPage onGetStarted={() => setFlow("signup")} onSignIn={() => setFlow("signin")} onGithub={() => signInWithGithub().catch(() => {})} /><div className="fixed bottom-4 right-4 z-50"><PWAInstallButton /></div></>;
+        return <><LandingPage onGetStarted={() => setFlow("signup")} onSignIn={() => setFlow("signin")} onGithub={signInWithGithub} /><div className="fixed bottom-4 right-4 z-50"><PWAInstallButton /></div></>;
     }
   }
 
