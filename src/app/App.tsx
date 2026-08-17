@@ -23,6 +23,18 @@ import { getExperiencePreferences } from "@/lib/experience";
 type PublicFlow = "landing" | "signin" | "signup" | "forgot" | "verify";
 interface AuthLink { token: string; type: "verify" | "recovery" | "reset"; }
 
+function getInitialFlow(): PublicFlow {
+  if (typeof window === "undefined") return "landing";
+  const params = new URLSearchParams(window.location.search);
+  const flow = params.get("flow");
+  if (flow === "signin" || flow === "signup" || flow === "forgot") return flow;
+  const path = window.location.pathname.replace(/\/+$/, "");
+  if (path === "/login" || path === "/signin") return "signin";
+  if (path === "/signup" || path === "/register") return "signup";
+  if (path === "/forgot-password") return "forgot";
+  return "landing";
+}
+
 function detectAuthLink(): AuthLink | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
@@ -41,7 +53,7 @@ function LoadingScreen() {
 
 function AppInner() {
   const { user, loading, signInWithGithub } = useAuth();
-  const [flow, setFlow] = useState<PublicFlow>("landing");
+  const [flow, setFlow] = useState<PublicFlow>(getInitialFlow);
   const [verifyEmail, setVerifyEmail] = useState("");
   const [authLink, setAuthLink] = useState<AuthLink | null>(detectAuthLink);
   const [verifyDone, setVerifyDone] = useState(false);
