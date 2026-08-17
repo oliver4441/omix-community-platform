@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const crypto = require('crypto');
 
-exports.handler = async function (event, context) {
+exports.handler = async function (event) {
   const secret = process.env.MARKETPLACE_WEBHOOK_SECRET || 'replace_with_secret';
   const sig = event.headers['x-hub-signature-256'] || '';
   const body = event.body || '';
@@ -16,16 +17,13 @@ exports.handler = async function (event, context) {
   let payload;
   try {
     payload = JSON.parse(body);
-  } catch (e) {
+  } catch {
     payload = body;
   }
 
   const eventType = event.headers['x-github-event'] || 'unknown';
 
-  // Minimal handling: log event and return
   console.log('Marketplace event', eventType, payload.action || '');
-
-  // TODO: grant/revoke access based on payload
 
   return { statusCode: 200, body: 'ok' };
 };
