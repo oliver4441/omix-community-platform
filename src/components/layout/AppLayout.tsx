@@ -57,7 +57,8 @@ export function AppLayout() {
     return () => void unsub();
   }, []);
 
-  const showDiscovery = !!user && serversLoaded && servers.length === 0 && !discoveryDismissed;
+  const isCommunity = experience === "community";
+  const showDiscovery = !!user && !isCommunity && serversLoaded && servers.length === 0 && !discoveryDismissed;
 
   if (showDiscovery) {
     return (
@@ -70,8 +71,6 @@ export function AppLayout() {
       />
     );
   }
-
-  const isCommunity = experience === "community";
 
   return (
     <div className="h-screen w-full flex bg-background overflow-hidden" role="application" aria-label="Omix Community workspace">
