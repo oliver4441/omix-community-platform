@@ -21,19 +21,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
       - name: Typecheck workers
         run: npm run workers:typecheck
-
       - name: Verify required secrets are set
         shell: bash
         run: |
@@ -49,34 +45,26 @@ jobs:
           GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}
           GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-
-      # Ensure the KV namespace exists (errors if already present — that's fine).
-      # The namespace id itself is committed in workers/omix-api/wrangler.toml.
       - name: Ensure KV namespace
         run: npx wrangler kv namespace create omix-assets || true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      # Apply any pending D1 migrations (schema lives in workers/migrations/).
       - name: Apply D1 migrations
         run: npx wrangler d1 migrations apply omix-db --config workers/omix-api/wrangler.toml
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
       - name: Deploy omix-api
         run: npx wrangler deploy --config workers/omix-api/wrangler.toml
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
       - name: Deploy omix-cron
         run: npx wrangler deploy --config workers/omix-cron/wrangler.toml
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
       - name: Set omix-api secrets
         run: |
           echo "${{ secrets.ABLY_API_KEY }}" | npx wrangler secret put ABLY_API_KEY --config workers/omix-api/wrangler.toml
@@ -86,9 +74,9 @@ jobs:
           if [ -n "${{ secrets.EMAIL_FROM }}" ]; then
             echo "${{ secrets.EMAIL_FROM }}" | npx wrangler secret put EMAIL_FROM --config workers/omix-api/wrangler.toml
           fi
-          if [ -n "${{ secrets.APP_ORIGIN }}" ]; then
-            echo "${{ secrets.APP_ORIGIN }}" | npx wrangler secret put APP_ORIGIN --config workers/omix-api/wrangler.toml
-          fi
+          # APP_ORIGIN is a non-secret production setting and is defined in wrangler.toml.
+          # Remove any legacy secret so it cannot override the Vercel origin.
+          npx wrangler secret delete APP_ORIGIN --config workers/omix-api/wrangler.toml --force || true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
