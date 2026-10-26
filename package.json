@@ -13,13 +13,20 @@
   },
   "dependencies": {
     "@ably/chat": "^1.4.0",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
+    "@ionic/react": "^9.0.9",
+    "@ionic/react-router": "^9.0.9",
     "@jitsi/react-sdk": "^1.4.4",
     "@supabase/supabase-js": "^2.110.8",
     "firebase": "^8.10.1",
     "lucide-react": "^0.516.0",
     "next": "16.2.11",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "react-icons": "^5.7.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260801.1",
