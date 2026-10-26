@@ -25,6 +25,10 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: "-Xmx4G -Dfile.encoding=UTF-8"
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_HOME: /usr/local/lib/android/sdk
 
     steps:
       - name: Checkout
@@ -64,46 +68,32 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          api-level: 34
-          ndk: 26.1.10909125
-          ndk-type: ndkVersion
+      - name: Install SDK packages
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -3
+          echo "SDK installed: $(ls $ANDROID_HOME/platforms/)"
 
-      - name: Build release APK
+      - name: Build APK (debug)
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleDebug --no-daemon 2>&1 | tail -20
 
       - name: Locate APK
         run: |
-          APK_PATH=$(find android/app/build/outputs/apk -name "*-release.apk" | head -1)
+          APK_PATH=$(find android/app/build/outputs/apk -name "*-debug.apk" | head -1)
           if [ -z "$APK_PATH" ]; then
             echo "ERROR: APK not found"
-            ls -la android/app/build/outputs/apk/ 2>/dev/null || echo "No output dir"
+            ls -laR android/app/build/outputs/apk/ 2>/dev/null || echo "No output dir"
             exit 1
           fi
           echo "APK found at: $APK_PATH"
           ls -lh $APK_PATH
-
-      - name: Zip APK
-        run: |
-          APK_PATH=$(find android/app/build/outputs/apk -name "*-release.apk" | head -1)
-          cd android/app/build/outputs/apk
-          zip -j omix-community-apk.zip $APK_PATH
+          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: omix-community-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 30
-
-      - name: Upload ZIP artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: omix-community-apk-zip
-          path: android/app/build/outputs/apk/omix-community-apk.zip
+          path: ${{ env.APK_PATH }}
           retention-days: 30
