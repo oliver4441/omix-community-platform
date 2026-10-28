@@ -55,6 +55,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Install Android SDK 36
+        run: |
+          SDKMANAGER="/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools" 2>&1 | tail -3
+          echo "Installed platforms: $(ls /usr/local/lib/android/sdk/platforms/)"
+
       - name: Build APK (debug)
         run: |
           cd android
