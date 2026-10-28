@@ -11,15 +11,6 @@ on:
       - 'package-lock.json'
       - 'android/**'
       - '.github/workflows/build-apk.yml'
-  pull_request:
-    branches: [master, main]
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'capacitor.config.ts'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'android/**'
   workflow_dispatch:
 
 jobs:
@@ -27,8 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GRADLE_OPTS: "-Xmx4G -Dfile.encoding=UTF-8"
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      ANDROID_HOME: /usr/local/lib/android/sdk
 
     steps:
       - name: Checkout
@@ -48,8 +37,6 @@ jobs:
 
       - name: Build Next.js static export
         run: npm run build
-        env:
-          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
 
       - name: Verify dist directory
         run: |
@@ -68,10 +55,8 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Install SDK packages
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -3
-          echo "SDK installed: $(ls $ANDROID_HOME/platforms/)"
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
 
       - name: Build APK (debug)
         run: |
@@ -88,7 +73,7 @@ jobs:
             exit 1
           fi
           echo "APK found at: $APK_PATH"
-          ls -lh $APK_PATH
+          ls -lh "$APK_PATH"
           echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
 
       - name: Upload APK artifact
